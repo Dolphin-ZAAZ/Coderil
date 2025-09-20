@@ -72,10 +72,25 @@ async function createWindow() {
   })
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  // Dynamically import services to avoid ES module issues
+  const { DatabaseService } = await import('../src/services/database.js')
+  
+  // Initialize database service
+  await DatabaseService.getInstance()
+  createWindow()
+})
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   win = null
+  // Close database connection when app is closing
+  try {
+    const { DatabaseService } = await import('../src/services/database.js')
+    const dbService = await DatabaseService.getInstance()
+    dbService.close()
+  } catch (error) {
+    console.error('Error closing database:', error)
+  }
   if (process.platform !== 'darwin') app.quit()
 })
 
@@ -132,14 +147,36 @@ ipcMain.handle('execute-code', async (_event, language: string, _code: string, _
 })
 
 ipcMain.handle('save-attempt', async (_event, attempt: any) => {
-  // TODO: Implement in task 3
-  console.log('Saving attempt:', attempt)
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    await progressService.saveAttempt({
+      kataId: attempt.kataId,
+      timestamp: new Date(attempt.timestamp),
+      language: attempt.language,
+      status: attempt.status,
+      score: attempt.score,
+      durationMs: attempt.durationMs,
+      code: attempt.code
+    })
+    console.log('Attempt saved successfully:', attempt.kataId)
+  } catch (error) {
+    console.error('Failed to save attempt:', error)
+    throw error
+  }
 })
 
 ipcMain.handle('get-progress', async (_event, kataId: string) => {
-  // TODO: Implement in task 3
-  console.log('Getting progress for:', kataId)
-  return null
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    const progress = await progressService.getProgress(kataId)
+    console.log('Retrieved progress for:', kataId, progress ? 'found' : 'not found')
+    return progress
+  } catch (error) {
+    console.error('Failed to get progress:', error)
+    return null
+  }
 })
 
 ipcMain.handle('judge-explanation', async (_event, explanation: string, rubric: any) => {
@@ -155,18 +192,113 @@ ipcMain.handle('judge-template', async (_event, templateContent: string, rubric:
 })
 
 ipcMain.handle('get-settings', async () => {
-  // TODO: Implement in task 20
-  console.log('Getting user settings')
-  return { autoContinueEnabled: false, theme: 'auto', editorFontSize: 14, autoSaveInterval: 1000 }
+  try {
+    const { DatabaseService } = await import('../src/services/database.js')
+    const dbService = await DatabaseService.getInstance()
+    const settings = dbService.getAllSettings()
+    console.log('Retrieved user settings')
+    return {
+      autoContinueEnabled: settings.auto_continue_enabled === 'true',
+      theme: settings.theme || 'auto',
+      editorFontSize: parseInt(settings.editor_font_size) || 14,
+      autoSaveInterval: parseInt(settings.auto_save_interval) || 1000
+    }
+  } catch (error) {
+    console.error('Failed to get settings:', error)
+    return { autoContinueEnabled: false, theme: 'auto', editorFontSize: 14, autoSaveInterval: 1000 }
+  }
 })
 
 ipcMain.handle('update-setting', async (_event, key: string, value: any) => {
-  // TODO: Implement in task 20
-  console.log('Updating setting:', { key, value })
+  try {
+    const { DatabaseService } = await import('../src/services/database.js')
+    const dbService = await DatabaseService.getInstance()
+    
+    // Convert setting key to database format
+    const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase()
+    const dbValue = typeof value === 'boolean' ? value.toString() : value.toString()
+    
+    dbService.setSetting(dbKey, dbValue)
+    console.log('Updated setting:', { key: dbKey, value: dbValue })
+  } catch (error) {
+    console.error('Failed to update setting:', error)
+    throw error
+  }
 })
 
 ipcMain.handle('get-random-kata', async (_event, currentKataId: string, filters: any) => {
   // TODO: Implement in task 20
   console.log('Getting random kata:', { currentKataId, filters })
   return null
+})
+
+// Additional database-related IPC handlers
+ipcMain.handle('save-code', async (_event, kataId: string, code: string) => {
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    await progressService.saveCode(kataId, code)
+    console.log('Code saved for kata:', kataId)
+  } catch (error) {
+    console.error('Failed to save code:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('load-code', async (_event, kataId: string) => {
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    const code = await progressService.loadCode(kataId)
+    console.log('Code loaded for kata:', kataId, code ? 'found' : 'not found')
+    return code
+  } catch (error) {
+    console.error('Failed to load code:', error)
+    return null
+  }
+})
+
+ipcMain.handle('get-attempt-history', async (_event, kataId: string) => {
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    const history = await progressService.getAttemptHistory(kataId)
+    console.log('Retrieved attempt history for:', kataId, `${history.length} attempts`)
+    return history
+  } catch (error) {
+    console.error('Failed to get attempt history:', error)
+    return []
+  }
+})
+
+ipcMain.handle('get-all-progress', async () => {
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    const allProgress = await progressService.getAllProgress()
+    console.log('Retrieved all progress:', `${allProgress.length} katas`)
+    return allProgress
+  } catch (error) {
+    console.error('Failed to get all progress:', error)
+    return []
+  }
+})
+
+ipcMain.handle('get-kata-stats', async (_event, kataId: string) => {
+  try {
+    const { ProgressService } = await import('../src/services/progress.js')
+    const progressService = new ProgressService()
+    const stats = await progressService.getKataStats(kataId)
+    console.log('Retrieved kata stats for:', kataId)
+    return stats
+  } catch (error) {
+    console.error('Failed to get kata stats:', error)
+    return {
+      totalAttempts: 0,
+      bestScore: 0,
+      lastStatus: 'not_attempted',
+      averageScore: 0,
+      passedAttempts: 0
+    }
+  }
 })

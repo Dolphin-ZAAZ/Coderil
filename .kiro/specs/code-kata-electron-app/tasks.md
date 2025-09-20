@@ -11,17 +11,23 @@
   - Set up project directory structure for main/renderer processes
   - _Requirements: 9.3_
 
-- [ ] 2. Implement core data models and type definitions
+- [x] 2. Implement core data models and type definitions
+
+
+
+
+
   - Create TypeScript interfaces for Kata, KataDetails, TestConfig, ExecutionResult, and other core models
   - Define enums for Language, KataType, Difficulty, and TestKind
   - Implement validation functions for kata metadata and structure
   - _Requirements: 1.2, 6.3_
 
-- [ ] 3. Create SQLite database service and schema
+- [x] 3. Create SQLite database service and schema
   - Set up better-sqlite3 integration in main process
   - Implement database initialization with attempts and progress tables
   - Create ProgressService with methods for saving attempts and tracking progress
   - Write unit tests for database operations
+  - Implement complete IPC integration for all database operations
   - _Requirements: 5.2, 5.4_
 
 - [ ] 4. Implement file system kata management
@@ -52,11 +58,12 @@
   - Connect selector to main app state for kata selection
   - _Requirements: 6.1, 6.2_
 
-- [ ] 8. Create IPC communication layer
+- [x] 8. Create IPC communication layer
   - Set up secure IPC channels between main and renderer processes
-  - Implement message handlers for kata operations, code execution, and database queries
+  - Implement message handlers for database operations (complete)
+  - Add placeholder handlers for kata operations and code execution (pending tasks 4, 9-11)
   - Add error handling and validation for IPC messages
-  - Create TypeScript interfaces for IPC message contracts
+  - Create TypeScript interfaces for IPC message contracts in preload script
   - _Requirements: 1.2, 2.4, 2.5_
 
 - [ ] 9. Build Python code execution engine

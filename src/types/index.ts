@@ -119,3 +119,243 @@ export interface AutoContinueNotification {
   toKata: string
   timestamp: Date
 }
+
+// Validation result types
+export interface ValidationResult {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+export interface FileSystemError extends Error {
+  code: string
+  path?: string
+}
+
+export interface ExecutionError extends Error {
+  exitCode?: number
+  stderr?: string
+  timeout?: boolean
+}
+
+export interface AIServiceError extends Error {
+  statusCode?: number
+  retryable?: boolean
+}
+
+export interface DatabaseError extends Error {
+  code?: string
+  constraint?: string
+}
+
+// Validation functions
+export const validateLanguage = (language: string): language is Language => {
+  return ['py', 'js', 'ts', 'cpp'].includes(language)
+}
+
+export const validateKataType = (type: string): type is KataType => {
+  return ['code', 'explain', 'template'].includes(type)
+}
+
+export const validateDifficulty = (difficulty: string): difficulty is Difficulty => {
+  return ['easy', 'medium', 'hard'].includes(difficulty)
+}
+
+export const validateTestKind = (kind: string): kind is TestKind => {
+  return ['programmatic', 'io', 'none'].includes(kind)
+}
+
+export const validateKataMetadata = (metadata: any): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  // Required fields validation
+  if (!metadata.slug || typeof metadata.slug !== 'string') {
+    errors.push('slug is required and must be a string')
+  }
+
+  if (!metadata.title || typeof metadata.title !== 'string') {
+    errors.push('title is required and must be a string')
+  }
+
+  if (!metadata.language || !validateLanguage(metadata.language)) {
+    errors.push('language is required and must be one of: py, js, ts, cpp')
+  }
+
+  if (!metadata.type || !validateKataType(metadata.type)) {
+    errors.push('type is required and must be one of: code, explain, template')
+  }
+
+  if (!metadata.difficulty || !validateDifficulty(metadata.difficulty)) {
+    errors.push('difficulty is required and must be one of: easy, medium, hard')
+  }
+
+  if (!metadata.entry || typeof metadata.entry !== 'string') {
+    errors.push('entry is required and must be a string')
+  }
+
+  if (!metadata.test || typeof metadata.test !== 'object') {
+    errors.push('test configuration is required')
+  } else {
+    if (!metadata.test.kind || !validateTestKind(metadata.test.kind)) {
+      errors.push('test.kind is required and must be one of: programmatic, io, none')
+    }
+    if (!metadata.test.file || typeof metadata.test.file !== 'string') {
+      errors.push('test.file is required and must be a string')
+    }
+  }
+
+  if (typeof metadata.timeout_ms !== 'number' || metadata.timeout_ms <= 0) {
+    errors.push('timeout_ms is required and must be a positive number')
+  }
+
+  // Optional fields validation
+  if (metadata.tags && !Array.isArray(metadata.tags)) {
+    errors.push('tags must be an array if provided')
+  } else if (metadata.tags) {
+    const invalidTags = metadata.tags.filter((tag: any) => typeof tag !== 'string')
+    if (invalidTags.length > 0) {
+      errors.push('all tags must be strings')
+    }
+  }
+
+  // Warnings for missing optional fields
+  if (!metadata.tags || metadata.tags.length === 0) {
+    warnings.push('no tags specified - consider adding tags for better discoverability')
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  }
+}
+
+export const validateKataStructure = (_kataPath: string, files: string[]): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  // Required files
+  const requiredFiles = ['meta.yaml', 'statement.md']
+  
+  for (const file of requiredFiles) {
+    if (!files.includes(file)) {
+      errors.push(`Missing required file: ${file}`)
+    }
+  }
+
+  // Check for starter code files
+  const codeExtensions = ['.py', '.js', '.ts', '.cpp', '.c', '.h']
+  const hasCodeFiles = files.some(file => 
+    codeExtensions.some(ext => file.endsWith(ext))
+  )
+
+  if (!hasCodeFiles) {
+    warnings.push('No code files found - consider adding starter code files')
+  }
+
+  // Check for test files
+  const testFiles = files.filter(file => 
+    file.includes('test') || file.includes('spec')
+  )
+
+  if (testFiles.length === 0) {
+    warnings.push('No test files found - consider adding test files')
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  }
+}
+
+export const validateExecutionResult = (result: any): result is ExecutionResult => {
+  return (
+    typeof result === 'object' &&
+    typeof result.success === 'boolean' &&
+    typeof result.output === 'string' &&
+    typeof result.errors === 'string' &&
+    Array.isArray(result.testResults) &&
+    typeof result.duration === 'number' &&
+    (result.score === undefined || typeof result.score === 'number')
+  )
+}
+
+export const validateTestResult = (result: any): result is TestResult => {
+  return (
+    typeof result === 'object' &&
+    typeof result.name === 'string' &&
+    typeof result.passed === 'boolean' &&
+    (result.message === undefined || typeof result.message === 'string') &&
+    (result.expected === undefined || result.expected !== null) &&
+    (result.actual === undefined || result.actual !== null)
+  )
+}
+
+export const validateRubric = (rubric: any): ValidationResult => {
+  const errors: string[] = []
+
+  if (!rubric || typeof rubric !== 'object') {
+    errors.push('rubric must be an object')
+    return { isValid: false, errors, warnings: [] }
+  }
+
+  if (!Array.isArray(rubric.keys)) {
+    errors.push('rubric.keys must be an array')
+  } else if (rubric.keys.length === 0) {
+    errors.push('rubric.keys cannot be empty')
+  } else if (!rubric.keys.every((key: any) => typeof key === 'string')) {
+    errors.push('all rubric keys must be strings')
+  }
+
+  if (!rubric.threshold || typeof rubric.threshold !== 'object') {
+    errors.push('rubric.threshold must be an object')
+  } else {
+    if (typeof rubric.threshold.min_total !== 'number' || rubric.threshold.min_total < 0) {
+      errors.push('rubric.threshold.min_total must be a non-negative number')
+    }
+    if (typeof rubric.threshold.min_correctness !== 'number' || rubric.threshold.min_correctness < 0) {
+      errors.push('rubric.threshold.min_correctness must be a non-negative number')
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings: []
+  }
+}
+
+// Component prop interfaces
+export interface AppShellProps {
+  katas: Kata[]
+  selectedKata: Kata | null
+  onKataSelect: (kata: Kata) => void
+}
+
+export interface KataSelectorProps {
+  katas: Kata[]
+  filters: KataFilters
+  onFilterChange: (filters: KataFilters) => void
+  onKataSelect: (kata: Kata) => void
+}
+
+export interface StatementPanelProps {
+  statement: string
+  metadata: KataMetadata
+}
+
+export interface CodeEditorProps {
+  language: Language
+  initialCode: string
+  onChange: (code: string) => void
+  onRun: () => void
+  onSubmit: () => void
+}
+
+export interface ResultsPanelProps {
+  results: ExecutionResult | null
+  aiJudgment: AIJudgment | null
+  isLoading: boolean
+}

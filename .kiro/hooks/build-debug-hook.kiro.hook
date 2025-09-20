@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "name": "Build & Debug on Task Completion",
+  "description": "Automatically builds the project and debugs any compiler errors after significant changes or task completions, rather than on every file change",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "electron/*.ts",
+      "*.json",
+      "*.config.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A significant change has been detected in the codebase. Please build the project and check for any compiler errors. If there are compilation issues, analyze them and provide debugging assistance to resolve the problems. Focus on TypeScript/React compilation errors and suggest fixes."
+  }
+}

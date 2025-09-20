@@ -36,6 +36,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveAttempt: (attempt: any) => ipcRenderer.invoke('save-attempt', attempt),
   getProgress: (kataId: string) => ipcRenderer.invoke('get-progress', kataId),
   updateProgress: (kataId: string, progress: any) => ipcRenderer.invoke('update-progress', kataId, progress),
+  saveCode: (kataId: string, code: string) => ipcRenderer.invoke('save-code', kataId, code),
+  loadCode: (kataId: string) => ipcRenderer.invoke('load-code', kataId),
+  getAttemptHistory: (kataId: string) => ipcRenderer.invoke('get-attempt-history', kataId),
+  getAllProgress: () => ipcRenderer.invoke('get-all-progress'),
+  getKataStats: (kataId: string) => ipcRenderer.invoke('get-kata-stats', kataId),
   
   // AI judging
   judgeExplanation: (explanation: string, rubric: any) => 
@@ -66,6 +71,11 @@ export interface ElectronAPI {
   saveAttempt: (attempt: any) => Promise<void>
   getProgress: (kataId: string) => Promise<any>
   updateProgress: (kataId: string, progress: any) => Promise<void>
+  saveCode: (kataId: string, code: string) => Promise<void>
+  loadCode: (kataId: string) => Promise<string | null>
+  getAttemptHistory: (kataId: string) => Promise<any[]>
+  getAllProgress: () => Promise<any[]>
+  getKataStats: (kataId: string) => Promise<any>
   judgeExplanation: (explanation: string, rubric: any) => Promise<any>
   judgeTemplate: (templateContent: string, rubric: any, expectedStructure: any) => Promise<any>
   openFileDialog: () => Promise<string[]>
