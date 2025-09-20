@@ -55,6 +55,18 @@ This feature involves creating a minimal Electron desktop application for code k
 4. IF the AI response is malformed THEN the system SHALL allow the user to retry submission
 5. WHEN an explanation fails THEN the system SHALL NOT reveal the exemplar answer and offer a retry
 
+### Requirement 4.1
+
+**User Story:** As a developer working on template katas, I want AI-powered feedback on my template implementations, so that I can improve my ability to create proper project structures and boilerplate code.
+
+#### Acceptance Criteria
+
+1. WHEN a user submits a template kata THEN the system SHALL send the template content to the configured AI model
+2. WHEN the AI processes a template THEN the system SHALL evaluate structure, completeness, and best practices
+3. WHEN AI scoring is complete THEN the system SHALL provide feedback on missing components, incorrect patterns, and improvements
+4. IF the template is "close enough" based on AI judgment THEN the system SHALL mark it as passed
+5. WHEN a template fails THEN the system SHALL provide specific guidance on what needs to be improved
+
 ### Requirement 5
 
 **User Story:** As a developer, I want my progress and code to be automatically saved, so that I don't lose work and can track my improvement over time.

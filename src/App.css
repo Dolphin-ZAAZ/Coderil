@@ -1,0 +1,233 @@
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background-color: #1a1a1a;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #333;
+}
+
+.app-header h1 {
+  margin: 0 0 0.5rem 0;
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.app-header p {
+  margin: 0;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.kata-selector {
+  width: 300px;
+  background-color: #2a2a2a;
+  border-right: 1px solid #333;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.kata-selector h2 {
+  margin: 0 0 1rem 0;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.no-katas {
+  color: #ccc;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.no-katas p {
+  margin: 0.5rem 0;
+}
+
+.kata-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kata-item {
+  background-color: #333;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.kata-item:hover {
+  background-color: #3a3a3a;
+  border-color: #555;
+}
+
+.kata-item.selected {
+  background-color: #0066cc;
+  border-color: #0088ff;
+}
+
+.kata-item h3 {
+  margin: 0 0 0.5rem 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.kata-meta {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.kata-meta span {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.difficulty {
+  color: #fff;
+}
+
+.difficulty.easy {
+  background-color: #22c55e;
+}
+
+.difficulty.medium {
+  background-color: #f59e0b;
+}
+
+.difficulty.hard {
+  background-color: #ef4444;
+}
+
+.language {
+  background-color: #6366f1;
+  color: #fff;
+}
+
+.type {
+  color: #fff;
+}
+
+.type.code {
+  background-color: #8b5cf6;
+}
+
+.type.explain {
+  background-color: #f59e0b;
+}
+
+.type.template {
+  background-color: #10b981;
+}
+
+.kata-tags {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background-color: #4a5568;
+  color: #e2e8f0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.kata-workspace {
+  flex: 1;
+  background-color: #1a1a1a;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.workspace-content h2,
+.workspace-placeholder h2 {
+  margin: 0 0 1rem 0;
+  color: #fff;
+}
+
+.workspace-content p,
+.workspace-placeholder p {
+  color: #ccc;
+  margin: 0.5rem 0;
+}
+
+.workspace-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: light) {
+  .app-header {
+    background-color: #f8f9fa;
+    border-bottom-color: #e9ecef;
+  }
+
+  .app-header h1 {
+    color: #212529;
+  }
+
+  .app-header p {
+    color: #6c757d;
+  }
+
+  .kata-selector {
+    background-color: #f8f9fa;
+    border-right-color: #e9ecef;
+  }
+
+  .kata-selector h2 {
+    color: #212529;
+  }
+
+  .no-katas {
+    color: #6c757d;
+  }
+
+  .kata-item {
+    background-color: #fff;
+    border-color: #e9ecef;
+  }
+
+  .kata-item:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+  }
+
+  .kata-item h3 {
+    color: #212529;
+  }
+
+  .kata-workspace {
+    background-color: #fff;
+  }
+
+  .workspace-content h2,
+  .workspace-placeholder h2 {
+    color: #212529;
+  }
+
+  .workspace-content p,
+  .workspace-placeholder p {
+    color: #6c757d;
+  }
+}

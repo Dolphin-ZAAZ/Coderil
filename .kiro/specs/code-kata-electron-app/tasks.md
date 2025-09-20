@@ -1,6 +1,11 @@
 # Implementation Plan
 
-- [ ] 1. Set up project structure and development environment
+- [x] 1. Set up project structure and development environment
+
+
+
+
+
   - Initialize Electron + Vite + React + TypeScript project with proper configuration
   - Configure build tools, linting, and development scripts
   - Set up project directory structure for main/renderer processes
@@ -92,6 +97,14 @@
   - Implement rubric-based threshold checking for pass/fail determination
   - Add retry mechanism for malformed AI responses
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [ ] 13.1. Extend AI judge service for template katas
+  - Add template judging capability to AIJudgeService
+  - Create template-specific prompt generation with structure analysis
+  - Implement "close enough" evaluation logic for template completeness
+  - Add support for multi-file template validation (folder structures, config files)
+  - Create template-specific rubric evaluation for best practices and patterns
+  - _Requirements: 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5_
 
 - [ ] 14. Integrate progress persistence and autosave
   - Connect autosave service to Monaco Editor change events

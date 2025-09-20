@@ -119,6 +119,7 @@ interface CodeExecutionService {
 ```typescript
 interface AIJudgeService {
   judgeExplanation(explanation: string, rubric: Rubric): Promise<AIJudgment>;
+  judgeTemplate(templateContent: string, rubric: Rubric, expectedStructure: any): Promise<AIJudgment>;
   validateResponse(response: string): AIJudgment | null;
 }
 ```
@@ -242,7 +243,7 @@ interface Progress {
 }
 
 type Language = 'py' | 'js' | 'ts' | 'cpp';
-type KataType = 'code' | 'explain';
+type KataType = 'code' | 'explain' | 'template';
 type Difficulty = 'easy' | 'medium' | 'hard';
 ```
 
