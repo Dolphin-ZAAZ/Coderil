@@ -143,6 +143,16 @@ interface AutosaveService {
 }
 ```
 
+#### 6. Auto-Continue Service
+```typescript
+interface AutoContinueService {
+  isEnabled(): boolean;
+  setEnabled(enabled: boolean): void;
+  getRandomKata(currentKata: Kata, availableKatas: Kata[], filters: KataFilters): Kata | null;
+  shouldTrigger(executionResult: ExecutionResult | AIJudgment): boolean;
+}
+```
+
 ## Data Models
 
 ### Core Models
@@ -242,6 +252,20 @@ interface Progress {
   lastAttempt: Date;
 }
 
+interface UserSettings {
+  autoContinueEnabled: boolean;
+  theme: 'light' | 'dark' | 'auto';
+  editorFontSize: number;
+  autoSaveInterval: number;
+}
+
+interface AutoContinueNotification {
+  message: string;
+  fromKata: string;
+  toKata: string;
+  timestamp: Date;
+}
+
 type Language = 'py' | 'js' | 'ts' | 'cpp';
 type KataType = 'code' | 'explain' | 'template';
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -270,6 +294,19 @@ CREATE TABLE progress (
   attempts_count INTEGER DEFAULT 0,
   last_attempt DATETIME
 );
+
+CREATE TABLE user_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default settings
+INSERT OR IGNORE INTO user_settings (key, value) VALUES 
+  ('auto_continue_enabled', 'false'),
+  ('theme', 'auto'),
+  ('editor_font_size', '14'),
+  ('auto_save_interval', '1000');
 
 CREATE INDEX idx_attempts_kata_id ON attempts(kata_id);
 CREATE INDEX idx_attempts_timestamp ON attempts(timestamp);

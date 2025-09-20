@@ -10,15 +10,45 @@
   border-bottom: 1px solid #333;
 }
 
-.app-header h1 {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title h1 {
   margin: 0 0 0.5rem 0;
   color: #fff;
   font-size: 1.5rem;
 }
 
-.app-header p {
+.header-title p {
   margin: 0;
   color: #ccc;
+  font-size: 0.9rem;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+}
+
+.auto-continue-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ccc;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-continue-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #0066cc;
+}
+
+.toggle-text {
   font-size: 0.9rem;
 }
 
@@ -182,11 +212,15 @@
     border-bottom-color: #e9ecef;
   }
 
-  .app-header h1 {
+  .header-title h1 {
     color: #212529;
   }
 
-  .app-header p {
+  .header-title p {
+    color: #6c757d;
+  }
+
+  .auto-continue-toggle {
     color: #6c757d;
   }
 

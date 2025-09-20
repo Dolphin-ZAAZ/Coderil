@@ -148,9 +148,20 @@
   - Add error recovery mechanisms for database and file system issues
   - _Requirements: 3.5, 4.5, 5.5, 9.4_
 
-- [ ] 20. Write end-to-end tests and integration tests
+- [ ] 20. Implement auto-continue kata shuffle feature
+  - Create AutoContinueService for managing auto-continue functionality
+  - Add user settings storage and retrieval for auto-continue preference
+  - Implement random kata selection logic that respects current filters
+  - Add auto-continue toggle UI component in settings or header
+  - Create notification system for auto-continue transitions
+  - Integrate auto-continue trigger with successful kata completion
+  - Add settings persistence to database with user_settings table
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
+
+- [ ] 21. Write end-to-end tests and integration tests
   - Create E2E tests for complete kata workflow (load → edit → run → submit)
   - Add integration tests for AI judge functionality with mock responses
   - Test progress persistence across application restarts
   - Verify import/export functionality with sample kata files
-  - _Requirements: 1.1, 2.4, 2.5, 4.1, 5.3, 8.1, 8.2_
+  - Test auto-continue functionality with various filter combinations
+  - _Requirements: 1.1, 2.4, 2.5, 4.1, 5.3, 8.1, 8.2, 10.1_

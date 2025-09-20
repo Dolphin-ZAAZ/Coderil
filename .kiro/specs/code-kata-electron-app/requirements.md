@@ -122,3 +122,17 @@ This feature involves creating a minimal Electron desktop application for code k
 2. IF required runtimes are missing THEN the system SHALL display informative warnings with installation guidance
 3. WHEN packaging the application THEN the system SHALL include electron-builder configurations for cross-platform distribution
 4. WHEN runtime errors occur THEN the system SHALL provide clear error messages and recovery suggestions
+
+### Requirement 10
+
+**User Story:** As a developer practicing coding skills, I want the option to automatically continue to new random katas after completing one, so that I can maintain flow state and discover new challenges without manual selection.
+
+#### Acceptance Criteria
+
+1. WHEN a user passes a kata AND auto-continue is enabled THEN the system SHALL automatically select a random different kata
+2. WHEN auto-continue triggers THEN the system SHALL respect current filter settings for kata selection
+3. WHEN the application starts THEN the system SHALL load the user's auto-continue preference from settings
+4. WHEN a user toggles auto-continue THEN the system SHALL save the preference and display the current state
+5. IF no suitable katas are available for auto-continue THEN the system SHALL display a message and remain on current kata
+6. WHEN auto-continue selects a new kata THEN the system SHALL show a brief notification indicating the transition
+7. WHEN auto-continue is disabled THEN the system SHALL remain on the completed kata after passing

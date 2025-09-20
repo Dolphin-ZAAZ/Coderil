@@ -15,11 +15,22 @@ function App() {
   const [katas, setKatas] = useState<Kata[]>([])
   const [selectedKata, setSelectedKata] = useState<Kata | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
 
   useEffect(() => {
-    // Load katas on app start
+    // Load katas and settings on app start
     loadKatas()
+    loadSettings()
   }, [])
+
+  const loadSettings = async () => {
+    try {
+      const settings = await window.electronAPI.getSettings()
+      setAutoContinueEnabled(settings.autoContinueEnabled)
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    }
+  }
 
   const loadKatas = async () => {
     try {
@@ -37,11 +48,37 @@ function App() {
     setSelectedKata(kata)
   }
 
+  const handleAutoContinueToggle = async () => {
+    const newValue = !autoContinueEnabled
+    setAutoContinueEnabled(newValue)
+    try {
+      await window.electronAPI.updateSetting('auto_continue_enabled', newValue.toString())
+    } catch (error) {
+      console.error('Failed to update auto-continue setting:', error)
+      // Revert on error
+      setAutoContinueEnabled(!newValue)
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Code Kata App</h1>
-        <p>Practice coding challenges with local execution and AI-powered judging</p>
+        <div className="header-content">
+          <div className="header-title">
+            <h1>Code Kata App</h1>
+            <p>Practice coding challenges with local execution and AI-powered judging</p>
+          </div>
+          <div className="header-controls">
+            <label className="auto-continue-toggle">
+              <input
+                type="checkbox"
+                checked={autoContinueEnabled}
+                onChange={handleAutoContinueToggle}
+              />
+              <span className="toggle-text">Auto-continue</span>
+            </label>
+          </div>
+        </div>
       </header>
       
       <main className="app-main">

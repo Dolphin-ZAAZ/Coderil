@@ -153,3 +153,20 @@ ipcMain.handle('judge-template', async (_event, templateContent: string, rubric:
   console.log('Judging template:', { templateLength: templateContent.length, rubric, expectedStructure })
   return { scores: {}, feedback: 'Not implemented yet', pass: false, totalScore: 0 }
 })
+
+ipcMain.handle('get-settings', async () => {
+  // TODO: Implement in task 20
+  console.log('Getting user settings')
+  return { autoContinueEnabled: false, theme: 'auto', editorFontSize: 14, autoSaveInterval: 1000 }
+})
+
+ipcMain.handle('update-setting', async (_event, key: string, value: any) => {
+  // TODO: Implement in task 20
+  console.log('Updating setting:', { key, value })
+})
+
+ipcMain.handle('get-random-kata', async (_event, currentKataId: string, filters: any) => {
+  // TODO: Implement in task 20
+  console.log('Getting random kata:', { currentKataId, filters })
+  return null
+})

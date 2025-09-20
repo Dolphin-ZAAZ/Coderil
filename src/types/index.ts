@@ -105,3 +105,17 @@ export interface KataFilters {
   tags?: string[]
   type?: KataType[]
 }
+
+export interface UserSettings {
+  autoContinueEnabled: boolean
+  theme: 'light' | 'dark' | 'auto'
+  editorFontSize: number
+  autoSaveInterval: number
+}
+
+export interface AutoContinueNotification {
+  message: string
+  fromKata: string
+  toKata: string
+  timestamp: Date
+}

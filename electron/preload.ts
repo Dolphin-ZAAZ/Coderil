@@ -49,6 +49,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // System checks
   checkDependencies: () => ipcRenderer.invoke('check-dependencies'),
+  
+  // Settings and auto-continue
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  updateSetting: (key: string, value: any) => ipcRenderer.invoke('update-setting', key, value),
+  getRandomKata: (currentKataId: string, filters: any) => ipcRenderer.invoke('get-random-kata', currentKataId, filters),
 })
 
 // Type definitions for the exposed API
@@ -66,6 +71,9 @@ export interface ElectronAPI {
   openFileDialog: () => Promise<string[]>
   saveFileDialog: () => Promise<string>
   checkDependencies: () => Promise<any>
+  getSettings: () => Promise<any>
+  updateSetting: (key: string, value: any) => Promise<void>
+  getRandomKata: (currentKataId: string, filters: any) => Promise<any>
 }
 
 declare global {
