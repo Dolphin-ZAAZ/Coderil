@@ -1,0 +1,137 @@
+import { ResultsPanelProps } from '@/types'
+import './ResultsPanel.css'
+
+export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelProps) {
+  if (isLoading) {
+    return (
+      <div className="results-panel">
+        <div className="results-header">
+          <h3>Results</h3>
+        </div>
+        <div className="results-content">
+          <div className="loading-state">
+            <div className="loading-spinner"></div>
+            <p>Running tests...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!results && !aiJudgment) {
+    return (
+      <div className="results-panel">
+        <div className="results-header">
+          <h3>Results</h3>
+        </div>
+        <div className="results-content">
+          <div className="empty-state">
+            <p>Click "Run" to test your code or "Submit" for full evaluation.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="results-panel">
+      <div className="results-header">
+        <h3>Results</h3>
+        {results && (
+          <div className="results-summary">
+            <span className={`status ${results.success ? 'success' : 'failure'}`}>
+              {results.success ? 'Passed' : 'Failed'}
+            </span>
+            {results.score !== undefined && (
+              <span className="score">Score: {Math.round(results.score)}%</span>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <div className="results-content">
+        {results && (
+          <div className="execution-results">
+            <div className="test-results">
+              <h4>Test Results</h4>
+              {results.testResults.length > 0 ? (
+                <div className="test-list">
+                  {results.testResults.map((test, index) => (
+                    <div key={index} className={`test-item ${test.passed ? 'passed' : 'failed'}`}>
+                      <div className="test-name">
+                        <span className={`test-icon ${test.passed ? 'pass' : 'fail'}`}>
+                          {test.passed ? '✓' : '✗'}
+                        </span>
+                        {test.name}
+                      </div>
+                      {test.message && (
+                        <div className="test-message">{test.message}</div>
+                      )}
+                      {!test.passed && test.expected !== undefined && test.actual !== undefined && (
+                        <div className="test-details">
+                          <div className="expected">Expected: {JSON.stringify(test.expected)}</div>
+                          <div className="actual">Actual: {JSON.stringify(test.actual)}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-tests">No test results available</p>
+              )}
+            </div>
+
+            {results.output && (
+              <div className="output-section">
+                <h4>Output</h4>
+                <pre className="output-content">{results.output}</pre>
+              </div>
+            )}
+
+            {results.errors && (
+              <div className="error-section">
+                <h4>Errors</h4>
+                <pre className="error-content">{results.errors}</pre>
+              </div>
+            )}
+
+            <div className="execution-info">
+              <span>Duration: {results.duration}ms</span>
+            </div>
+          </div>
+        )}
+
+        {aiJudgment && (
+          <div className="ai-judgment">
+            <h4>AI Feedback</h4>
+            <div className="judgment-summary">
+              <span className={`judgment-status ${aiJudgment.pass ? 'pass' : 'fail'}`}>
+                {aiJudgment.pass ? 'Passed' : 'Failed'}
+              </span>
+              <span className="judgment-score">
+                Total Score: {Math.round(aiJudgment.totalScore)}%
+              </span>
+            </div>
+            
+            {Object.keys(aiJudgment.scores).length > 0 && (
+              <div className="score-breakdown">
+                <h5>Score Breakdown</h5>
+                {Object.entries(aiJudgment.scores).map(([key, score]) => (
+                  <div key={key} className="score-item">
+                    <span className="score-key">{key}</span>
+                    <span className="score-value">{Math.round(score)}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="feedback-content">
+              <h5>Feedback</h5>
+              <p>{aiJudgment.feedback}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

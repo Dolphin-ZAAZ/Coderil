@@ -42,7 +42,12 @@
   - Write tests for kata discovery and validation logic
   - _Requirements: 1.1, 1.3, 6.3_
 
-- [ ] 5. Build basic React UI shell and routing
+- [x] 5. Build basic React UI shell and routing
+
+
+
+
+
 
 
 
@@ -54,6 +59,9 @@
   - _Requirements: 2.1, 2.2, 2.3_
 
 - [ ] 6. Integrate Monaco Editor for code editing
+
+
+
   - Install and configure Monaco Editor in React
   - Implement syntax highlighting for Python, JavaScript, TypeScript, and C++
   - Add code change handlers and autosave functionality using LocalStorage
@@ -61,6 +69,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 5.1_
 
 - [ ] 7. Implement kata selector with filtering
+  - Create an example kata of each kind
   - Create KataSelector component with search and filter capabilities
   - Add filter controls for difficulty, language, tags, and type
   - Implement real-time filtering logic and kata list updates

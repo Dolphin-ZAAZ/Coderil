@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react'
+import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
+import { StatementPanel, CodeEditorPanel, ResultsPanel } from '@/components'
 import './App.css'
-
-interface Kata {
-  slug: string
-  title: string
-  language: string
-  type: string
-  difficulty: string
-  tags: string[]
-  path: string
-}
 
 function App() {
   const [katas, setKatas] = useState<Kata[]>([])
   const [selectedKata, setSelectedKata] = useState<Kata | null>(null)
+  const [kataDetails, setKataDetails] = useState<KataDetails | null>(null)
+  const [currentCode, setCurrentCode] = useState<string>('')
+  const [executionResults, setExecutionResults] = useState<ExecutionResult | null>(null)
+  const [aiJudgment, setAiJudgment] = useState<AIJudgment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
 
   useEffect(() => {
@@ -44,8 +41,55 @@ function App() {
     }
   }
 
-  const handleKataSelect = (kata: Kata) => {
+  const handleKataSelect = async (kata: Kata) => {
     setSelectedKata(kata)
+    setExecutionResults(null)
+    setAiJudgment(null)
+    
+    try {
+      // Load kata details (placeholder - will be implemented in later tasks)
+      const details: KataDetails = {
+        ...kata,
+        statement: `# ${kata.title}\n\nThis is a placeholder statement for the ${kata.title} kata.\n\nThe actual statement will be loaded from the kata's statement.md file in later tasks.`,
+        metadata: {
+          slug: kata.slug,
+          title: kata.title,
+          language: kata.language as Language,
+          type: kata.type as any,
+          difficulty: kata.difficulty as any,
+          tags: kata.tags,
+          entry: `entry.${kata.language}`,
+          test: { kind: 'programmatic', file: `tests.${kata.language}` },
+          timeout_ms: 5000
+        },
+        starterCode: getStarterCodePlaceholder(kata.language as Language),
+        testConfig: {
+          kind: 'programmatic',
+          publicTestFile: `tests.${kata.language}`,
+          timeoutMs: 5000
+        }
+      }
+      
+      setKataDetails(details)
+      setCurrentCode(details.starterCode)
+    } catch (error) {
+      console.error('Failed to load kata details:', error)
+    }
+  }
+
+  const getStarterCodePlaceholder = (language: Language): string => {
+    switch (language) {
+      case 'py':
+        return '# Write your Python solution here\n\ndef solution():\n    pass\n'
+      case 'js':
+        return '// Write your JavaScript solution here\n\nfunction solution() {\n    // Your code here\n}\n\nmodule.exports = { solution };\n'
+      case 'ts':
+        return '// Write your TypeScript solution here\n\nfunction solution(): any {\n    // Your code here\n}\n\nexport { solution };\n'
+      case 'cpp':
+        return '#include <iostream>\n#include <vector>\n#include <string>\n\nusing namespace std;\n\n// Write your C++ solution here\nint main() {\n    // Your code here\n    return 0;\n}\n'
+      default:
+        return '// Write your code here\n'
+    }
   }
 
   const handleAutoContinueToggle = async () => {
@@ -57,6 +101,89 @@ function App() {
       console.error('Failed to update auto-continue setting:', error)
       // Revert on error
       setAutoContinueEnabled(!newValue)
+    }
+  }
+
+  const handleCodeChange = (code: string) => {
+    setCurrentCode(code)
+    // Auto-save will be implemented in later tasks
+  }
+
+  const handleRun = async () => {
+    if (!kataDetails) return
+    
+    setIsExecuting(true)
+    setExecutionResults(null)
+    setAiJudgment(null)
+    
+    try {
+      // Placeholder for code execution - will be implemented in later tasks
+      const mockResult: ExecutionResult = {
+        success: true,
+        output: 'Mock execution output\nThis will be replaced with actual execution in later tasks.',
+        errors: '',
+        testResults: [
+          { name: 'Test 1', passed: true, message: 'Mock test passed' },
+          { name: 'Test 2', passed: false, message: 'Mock test failed', expected: 'expected', actual: 'actual' }
+        ],
+        score: 50,
+        duration: 123
+      }
+      
+      setTimeout(() => {
+        setExecutionResults(mockResult)
+        setIsExecuting(false)
+      }, 1000)
+    } catch (error) {
+      console.error('Failed to run code:', error)
+      setIsExecuting(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!kataDetails) return
+    
+    setIsExecuting(true)
+    setExecutionResults(null)
+    setAiJudgment(null)
+    
+    try {
+      // Placeholder for code execution and AI judging - will be implemented in later tasks
+      if (kataDetails.type === 'explain') {
+        const mockAiJudgment: AIJudgment = {
+          scores: { clarity: 80, correctness: 70, completeness: 60 },
+          feedback: 'Mock AI feedback: Your explanation shows good understanding but could be more detailed.',
+          pass: false,
+          totalScore: 70
+        }
+        
+        setTimeout(() => {
+          setAiJudgment(mockAiJudgment)
+          setIsExecuting(false)
+        }, 2000)
+      } else {
+        const mockResult: ExecutionResult = {
+          success: false,
+          output: 'Mock submission output\nThis will be replaced with actual execution in later tasks.',
+          errors: 'Mock error message',
+          testResults: [
+            { name: 'Public Test 1', passed: true },
+            { name: 'Public Test 2', passed: true },
+            { name: 'Hidden Test 1', passed: false, message: 'Hidden test failed' },
+            { name: 'Hidden Test 2', passed: true }
+          ],
+          score: 75,
+          duration: 234
+        }
+        
+        setTimeout(() => {
+          setExecutionResults(mockResult)
+          setIsExecuting(false)
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Failed to submit code:', error)
+      setIsExecuting(false)
     }
   }
 
@@ -119,11 +246,32 @@ function App() {
         </div>
 
         <div className="kata-workspace">
-          {selectedKata ? (
-            <div className="workspace-content">
-              <h2>{selectedKata.title}</h2>
-              <p>Selected kata: {selectedKata.slug}</p>
-              <p>This workspace will be implemented in later tasks.</p>
+          {selectedKata && kataDetails ? (
+            <div className="workspace-panels">
+              <div className="statement-panel-container">
+                <StatementPanel 
+                  statement={kataDetails.statement}
+                  metadata={kataDetails.metadata}
+                />
+              </div>
+              
+              <div className="code-editor-panel-container">
+                <CodeEditorPanel
+                  language={kataDetails.language}
+                  initialCode={currentCode}
+                  onChange={handleCodeChange}
+                  onRun={handleRun}
+                  onSubmit={handleSubmit}
+                />
+              </div>
+              
+              <div className="results-panel-container">
+                <ResultsPanel
+                  results={executionResults}
+                  aiJudgment={aiJudgment}
+                  isLoading={isExecuting}
+                />
+              </div>
             </div>
           ) : (
             <div className="workspace-placeholder">

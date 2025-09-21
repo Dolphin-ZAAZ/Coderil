@@ -181,20 +181,22 @@
 .kata-workspace {
   flex: 1;
   background-color: #1a1a1a;
-  padding: 2rem;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.workspace-content h2,
-.workspace-placeholder h2 {
-  margin: 0 0 1rem 0;
-  color: #fff;
+.workspace-panels {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
 }
 
-.workspace-content p,
-.workspace-placeholder p {
-  color: #ccc;
-  margin: 0.5rem 0;
+.statement-panel-container,
+.code-editor-panel-container,
+.results-panel-container {
+  height: 100%;
+  overflow: hidden;
 }
 
 .workspace-placeholder {
@@ -204,6 +206,77 @@
   justify-content: center;
   height: 100%;
   text-align: center;
+  padding: 2rem;
+}
+
+.workspace-placeholder h2 {
+  margin: 0 0 1rem 0;
+  color: #fff;
+}
+
+.workspace-placeholder p {
+  color: #ccc;
+  margin: 0.5rem 0;
+}
+
+/* Responsive layout for smaller screens */
+@media (max-width: 1200px) {
+  .workspace-panels {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  
+  .statement-panel-container {
+    grid-column: 1 / -1;
+  }
+  
+  .code-editor-panel-container {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .results-panel-container {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-main {
+    flex-direction: column;
+  }
+  
+  .kata-selector {
+    width: 100%;
+    height: 200px;
+    border-right: none;
+    border-bottom: 1px solid #333;
+  }
+  
+  .workspace-panels {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  
+  .statement-panel-container,
+  .code-editor-panel-container,
+  .results-panel-container {
+    grid-column: 1;
+  }
+  
+  .statement-panel-container {
+    grid-row: 1;
+    height: 200px;
+  }
+  
+  .code-editor-panel-container {
+    grid-row: 2;
+  }
+  
+  .results-panel-container {
+    grid-row: 3;
+    height: 200px;
+  }
 }
 
 @media (prefers-color-scheme: light) {
@@ -255,12 +328,10 @@
     background-color: #fff;
   }
 
-  .workspace-content h2,
   .workspace-placeholder h2 {
     color: #212529;
   }
 
-  .workspace-content p,
   .workspace-placeholder p {
     color: #6c757d;
   }
