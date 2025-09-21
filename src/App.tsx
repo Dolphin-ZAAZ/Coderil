@@ -31,11 +31,22 @@ function App() {
 
   const loadKatas = async () => {
     try {
+      console.log('=== LOADING KATAS FROM RENDERER ===')
       setIsLoading(true)
+      
+      if (!window.electronAPI) {
+        console.error('electronAPI not available - running in browser mode?')
+        setKatas([])
+        return
+      }
+      
+      console.log('Calling window.electronAPI.getKatas()')
       const loadedKatas = await window.electronAPI.getKatas()
+      console.log('Received katas from main process:', loadedKatas)
       setKatas(loadedKatas)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load katas:', error)
+      console.error('Error details:', error.message, error.stack)
     } finally {
       setIsLoading(false)
     }
@@ -104,6 +115,8 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to update auto-continue setting:', error)
+    }
+  }
 
   const handleCodeChange = (code: string) => {
     setCurrentCode(code)

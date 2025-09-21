@@ -46,8 +46,17 @@ export default defineConfig({
             sourcemap: 'inline',
             minify: false,
             outDir: 'dist-electron',
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs'],
+              fileName: () => 'preload.js'
+            },
             rollupOptions: {
-              external: ['sqlite3', 'better-sqlite3', 'sql.js']
+              external: ['electron'],
+              output: {
+                format: 'cjs',
+                exports: 'auto'
+              }
             }
           }
         }

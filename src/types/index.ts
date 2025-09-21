@@ -209,8 +209,13 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
     }
   }
 
-  if (typeof metadata.timeout_ms !== 'number' || metadata.timeout_ms <= 0) {
-    errors.push('timeout_ms is required and must be a positive number')
+  if (typeof metadata.timeout_ms !== 'number' || metadata.timeout_ms < 0) {
+    errors.push('timeout_ms is required and must be a non-negative number')
+  }
+  
+  // For explanation katas, timeout_ms can be 0 since no code execution is needed
+  if (metadata.type !== 'explain' && metadata.timeout_ms === 0) {
+    errors.push('timeout_ms must be greater than 0 for code and template katas')
   }
 
   // Optional fields validation
