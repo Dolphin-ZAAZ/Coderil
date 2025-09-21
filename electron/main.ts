@@ -132,7 +132,14 @@ ipcMain.handle('open-win', (_, arg) => {
 ipcMain.handle('get-katas', async () => {
   try {
     const { KataManagerService } = await import('../src/services/kata-manager.js')
-    const kataManager = KataManagerService.getInstance()
+    // In development, use project root; in production, use app directory
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    console.log('Looking for katas in:', katasPath)
+    console.log('Current working directory:', process.cwd())
+    const kataManager = KataManagerService.getInstance(katasPath)
     const katas = await kataManager.loadKatas()
     console.log(`Loaded ${katas.length} katas`)
     return katas
@@ -145,7 +152,12 @@ ipcMain.handle('get-katas', async () => {
 ipcMain.handle('load-kata', async (_event, slug: string) => {
   try {
     const { KataManagerService } = await import('../src/services/kata-manager.js')
-    const kataManager = KataManagerService.getInstance()
+    // Use the same path logic as get-katas
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
     const kata = await kataManager.loadKata(slug)
     console.log('Loaded kata details:', slug)
     return kata

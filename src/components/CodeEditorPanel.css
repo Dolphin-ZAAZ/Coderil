@@ -77,12 +77,38 @@
   background-color: #0052a3;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn:disabled:hover {
+  transform: none !important;
+}
+
 .editor-container {
   flex: 1;
   position: relative;
   overflow: hidden;
+  background-color: #1e1e1e;
 }
 
+.editor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* Monaco Editor will handle its own styling, but we ensure the container is properly sized */
+.editor-container .monaco-editor {
+  background-color: #1e1e1e !important;
+}
+
+/* Fallback textarea styles (not used with Monaco but kept for reference) */
 .code-textarea {
   width: 100%;
   height: 100%;
@@ -126,6 +152,18 @@
 
   .editor-status {
     color: #198754;
+  }
+
+  .editor-container {
+    background-color: #fff;
+  }
+
+  .editor-container .monaco-editor {
+    background-color: #fff !important;
+  }
+
+  .editor-loading {
+    color: #6c757d;
   }
 
   .code-textarea {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector } from '@/components'
 import './App.css'
 
 function App() {
@@ -96,13 +96,14 @@ function App() {
     const newValue = !autoContinueEnabled
     setAutoContinueEnabled(newValue)
     try {
-      await window.electronAPI.updateSetting('auto_continue_enabled', newValue.toString())
+      if (window.electronAPI) {
+        await window.electronAPI.updateSetting('auto_continue_enabled', newValue.toString())
+      } else {
+        // Browser mode - just update local state
+        console.log('Browser mode: auto-continue setting changed to', newValue)
+      }
     } catch (error) {
       console.error('Failed to update auto-continue setting:', error)
-      // Revert on error
-      setAutoContinueEnabled(!newValue)
-    }
-  }
 
   const handleCodeChange = (code: string) => {
     setCurrentCode(code)
@@ -209,40 +210,13 @@ function App() {
       </header>
       
       <main className="app-main">
-        <div className="kata-selector">
-          <h2>Available Katas</h2>
-          {isLoading ? (
-            <p>Loading katas...</p>
-          ) : katas.length === 0 ? (
-            <div className="no-katas">
-              <p>No katas found.</p>
-              <p>Add kata folders to the /katas/ directory to get started.</p>
-            </div>
-          ) : (
-            <div className="kata-list">
-              {katas.map((kata) => (
-                <div
-                  key={kata.slug}
-                  className={`kata-item ${selectedKata?.slug === kata.slug ? 'selected' : ''}`}
-                  onClick={() => handleKataSelect(kata)}
-                >
-                  <h3>{kata.title}</h3>
-                  <div className="kata-meta">
-                    <span className={`difficulty ${kata.difficulty}`}>{kata.difficulty}</span>
-                    <span className="language">{kata.language}</span>
-                    <span className={`type ${kata.type}`}>{kata.type}</span>
-                  </div>
-                  {kata.tags.length > 0 && (
-                    <div className="kata-tags">
-                      {kata.tags.map((tag) => (
-                        <span key={tag} className="tag">{tag}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="kata-selector-container">
+          <KataSelector
+            katas={katas}
+            selectedKata={selectedKata}
+            onKataSelect={handleKataSelect}
+            isLoading={isLoading}
+          />
         </div>
 
         <div className="kata-workspace">

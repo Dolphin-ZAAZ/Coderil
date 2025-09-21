@@ -58,7 +58,12 @@
   - Add basic styling and responsive layout
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 6. Integrate Monaco Editor for code editing
+- [x] 6. Integrate Monaco Editor for code editing
+
+
+
+
+
 
 
 
@@ -68,7 +73,12 @@
   - Create editor configuration for each supported language
   - _Requirements: 2.1, 2.2, 2.3, 5.1_
 
-- [ ] 7. Implement kata selector with filtering
+- [x] 7. Implement kata selector with filtering
+
+
+
+
+
   - Create an example kata of each kind
   - Create KataSelector component with search and filter capabilities
   - Add filter controls for difficulty, language, tags, and type

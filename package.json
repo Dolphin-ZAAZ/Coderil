@@ -28,6 +28,8 @@
   "author": "Code Kata App",
   "license": "MIT",
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.10.4",
     "@types/react": "^18.2.43",
@@ -43,6 +45,7 @@
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^27.0.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vite-plugin-electron": "^0.28.1",
@@ -51,10 +54,11 @@
     "wait-on": "^7.2.0"
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.6.0",
+    "@monaco-editor/react": "^4.7.0",
     "@types/js-yaml": "^4.0.9",
     "better-sqlite3": "^12.2.0",
     "js-yaml": "^4.1.0",
+    "monaco-editor": "^0.53.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sql.js": "^1.13.0"
