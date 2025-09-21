@@ -1,0 +1,11 @@
+slug: "your-template-name"
+title: "Your Template Title"
+language: "py"  # Primary language for the template
+type: "template"
+difficulty: "medium"
+tags: ["template", "project-structure", "your-framework"]
+entry: "template/"
+test:
+  kind: "none"
+  file: ""
+timeout_ms: 0  # No code execution

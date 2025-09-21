@@ -1,0 +1,31 @@
+keys:
+  - "structure"      # Is the project well-organized?
+  - "completeness"   # Are all required components present?
+  - "best_practices" # Does it follow framework/language best practices?
+  - "documentation"  # Is it well-documented?
+  - "functionality"  # Would this template actually work?
+
+threshold:
+  min_total: 75      # Minimum total score to pass
+  min_structure: 70  # Minimum structure score required
+
+scoring:
+  structure:
+    weight: 0.30     # 30% of total score
+    description: "Logical project organization and file structure"
+  
+  completeness:
+    weight: 0.25     # 25% of total score
+    description: "All required components and files are present"
+  
+  best_practices:
+    weight: 0.25     # 25% of total score
+    description: "Follows framework and language best practices"
+  
+  documentation:
+    weight: 0.10     # 10% of total score
+    description: "Clear documentation and setup instructions"
+  
+  functionality:
+    weight: 0.10     # 10% of total score
+    description: "Template would work as a starting point for real projects"

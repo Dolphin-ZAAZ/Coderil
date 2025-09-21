@@ -1,0 +1,31 @@
+keys:
+  - "clarity"        # How clear and understandable is the explanation?
+  - "correctness"    # Is the technical information accurate?
+  - "completeness"   # Does it cover all important aspects?
+  - "examples"       # Are code examples helpful and correct?
+  - "depth"          # Does it show deep understanding?
+
+threshold:
+  min_total: 70      # Minimum total score to pass (out of 100)
+  min_correctness: 80 # Minimum correctness score required
+
+scoring:
+  clarity:
+    weight: 0.25     # 25% of total score
+    description: "Clear, well-structured explanation that's easy to follow"
+  
+  correctness:
+    weight: 0.30     # 30% of total score
+    description: "Technically accurate information with no misconceptions"
+  
+  completeness:
+    weight: 0.20     # 20% of total score
+    description: "Covers all key aspects of the topic comprehensively"
+  
+  examples:
+    weight: 0.15     # 15% of total score
+    description: "Includes helpful, correct code examples with explanations"
+  
+  depth:
+    weight: 0.10     # 10% of total score
+    description: "Demonstrates deep understanding beyond surface level"

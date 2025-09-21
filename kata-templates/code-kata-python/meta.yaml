@@ -1,0 +1,11 @@
+slug: "your-kata-name"
+title: "Your Kata Title"
+language: "py"
+type: "code"
+difficulty: "easy"
+tags: ["tag1", "tag2"]
+entry: "entry.py"
+test:
+  kind: "programmatic"
+  file: "tests.py"
+timeout_ms: 5000

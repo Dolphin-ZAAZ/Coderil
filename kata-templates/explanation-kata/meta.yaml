@@ -1,0 +1,11 @@
+slug: "explain-your-topic"
+title: "Explain Your Topic"
+language: "py"  # Language for any code examples
+type: "explain"
+difficulty: "medium"
+tags: ["explanation", "concepts", "your-topic"]
+entry: "explanation.md"
+test:
+  kind: "none"
+  file: ""
+timeout_ms: 0  # No code execution

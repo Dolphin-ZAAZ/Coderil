@@ -62,6 +62,7 @@ Before running the application, ensure you have the following installed:
 ### Testing
 - `npm run test` - Run unit tests once
 - `npm run test:watch` - Run tests in watch mode for development
+- `npm run test src/services/__tests__/code-execution.test.ts` - Run Python execution engine tests specifically
 
 ## Development Notes
 
@@ -126,6 +127,103 @@ All database operations are accessible from the renderer process through secure 
 
 All database operations are fully tested with comprehensive unit tests covering normal operations, edge cases, and error conditions.
 
+## Code Execution System
+
+The application features a robust code execution system that runs user code locally with comprehensive test validation and error handling.
+
+### Python Execution Engine
+
+The Python execution engine is fully implemented and provides:
+
+#### **Core Features**
+- **Local Execution**: Runs Python code using the system's Python interpreter via `child_process.spawn()`
+- **Test Integration**: Automatically imports user code and executes test files (`tests.py` for public, `hidden_tests.py` for private)
+- **Timeout Protection**: Configurable execution timeouts with process termination (default: 5 seconds)
+- **Error Capture**: Comprehensive error handling for syntax errors, runtime exceptions, and assertion failures
+- **Score Calculation**: Automatic scoring based on test pass/fail ratios
+
+#### **Test Execution Workflow**
+1. **Code Preparation**: User code is temporarily written to `entry.py` in the kata directory
+2. **Test Execution**: Python process spawns to run the appropriate test file
+3. **Result Parsing**: Stdout/stderr are parsed to extract individual test results and error messages
+4. **Cleanup**: Original kata files are restored after execution
+5. **Scoring**: Pass/fail ratios are calculated and returned with detailed feedback
+
+#### **Public vs Hidden Tests**
+- **Run (Public Tests)**: Executes `tests.py` to provide immediate feedback during development
+- **Submit (All Tests)**: Runs both `tests.py` and `hidden_tests.py` for final evaluation
+- **Weighted Scoring**: Final scores combine public tests (30%) and hidden tests (70%)
+
+#### **Error Handling**
+The execution engine handles various error scenarios:
+- **Syntax Errors**: Python parsing errors with line numbers and descriptions
+- **Runtime Exceptions**: TypeError, ValueError, AttributeError, etc. with full tracebacks
+- **Assertion Failures**: Test failures with expected vs actual value comparisons
+- **Timeouts**: Infinite loops or long-running code with graceful process termination
+- **Missing Files**: Proper error messages when test files don't exist
+
+#### **Test Result Parsing**
+The system intelligently parses Python test output to provide detailed feedback:
+- **Success Detection**: Recognizes "All tests passed!" messages
+- **Failure Analysis**: Extracts specific test names and error messages from tracebacks
+- **Test Counting**: Automatically determines the number of tests from file content
+- **Progress Tracking**: Reports which tests passed/failed for granular feedback
+
+#### **Example Usage**
+```python
+# User writes code in the editor
+def two_sum(nums, target):
+    num_map = {}
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in num_map:
+            return [num_map[complement], i]
+        num_map[num] = i
+    return []
+
+# System executes tests and returns:
+# {
+#   success: true,
+#   score: 100,
+#   testResults: [
+#     { name: "test_example_1", passed: true, message: "Test passed" },
+#     { name: "test_example_2", passed: true, message: "Test passed" },
+#     { name: "test_example_3", passed: true, message: "Test passed" }
+#   ],
+#   output: "All public tests passed!",
+#   errors: "",
+#   duration: 245
+# }
+```
+
+#### **Security & Isolation**
+- **Process Isolation**: Each execution runs in a separate Python process
+- **Timeout Protection**: Prevents infinite loops from hanging the application
+- **File System Safety**: Temporary file operations with proper cleanup
+- **Error Containment**: Python exceptions are captured and don't crash the main application
+
+#### **Testing & Reliability**
+The Python execution engine includes comprehensive unit tests covering:
+- ✅ Successful code execution with passing tests
+- ✅ Failed code execution with detailed error reporting
+- ✅ Syntax error handling and reporting
+- ✅ Timeout handling for infinite loops
+- ✅ Missing test file scenarios
+- ✅ Hidden test execution
+- ✅ Integration with the main execution service
+
+### Future Execution Engines
+
+**JavaScript/TypeScript Engine** (Planned):
+- Node.js execution with Jest or similar test framework
+- TypeScript compilation support
+- NPM package management for dependencies
+
+**C++ Engine** (Planned):
+- GCC/Clang compilation with C++20 support
+- Automated build and test execution
+- Memory safety and compilation error reporting
+
 ## Current Implementation Status
 
 This project is currently in active development. The following features are implemented:
@@ -140,10 +238,15 @@ This project is currently in active development. The following features are impl
 - Electron + Vite + React integration
 - Complete IPC communication layer for database operations
 
+✅ **Recently Completed**:
+- Python code execution engine with full test support
+- File system kata management and loading
+- Monaco Editor integration for code editing
+- Complete kata workflow (load → edit → run → submit)
+
 🚧 **In Progress**:
-- File system kata management
-- Monaco Editor integration
-- Code execution engines (Python, JS/TS, C++)
+- JavaScript/TypeScript code execution engine
+- C++ code execution engine  
 - AI judge service for explanation and template katas
 
 See the [implementation plan](.kiro/specs/code-kata-electron-app/tasks.md) for detailed progress tracking.
@@ -155,12 +258,18 @@ See the [implementation plan](.kiro/specs/code-kata-electron-app/tasks.md) for d
 │   ├── main.ts        # Main process entry point with IPC handlers
 │   └── preload.ts     # Preload script for secure IPC communication
 ├── src/               # React renderer process files
-│   ├── components/    # Reusable React components (to be added)
+│   ├── components/    # React UI components
+│   │   ├── CodeEditorPanel.tsx    # Monaco editor integration
+│   │   ├── StatementPanel.tsx     # Kata problem statement display
+│   │   ├── ResultsPanel.tsx       # Test results and feedback display
+│   │   ├── KataSelector.tsx       # Kata selection and filtering
+│   │   └── __tests__/             # Component unit tests
 │   ├── services/      # Service layer for business logic
-│   │   ├── database.ts    # SQLite database service with schema management
-│   │   ├── progress.ts    # Progress tracking and attempt management
-│   │   ├── index.ts       # Service exports
-│   │   └── __tests__/     # Comprehensive unit tests for services
+│   │   ├── database.ts        # SQLite database service with schema management
+│   │   ├── progress.ts        # Progress tracking and attempt management
+│   │   ├── code-execution.ts  # Code execution engine (Python implemented)
+│   │   ├── kata-manager.ts    # File system kata management
+│   │   └── __tests__/         # Comprehensive unit tests for services
 │   ├── types/         # TypeScript type definitions and validation
 │   ├── App.tsx        # Main App component with kata selection
 │   ├── App.css        # App-specific styles
@@ -187,6 +296,24 @@ katas/
 │   ├── tests.py       # Test cases
 │   └── hidden_tests.py # Hidden test cases (optional)
 ```
+
+For detailed instructions on creating new katas, see the [Kata Authoring Guide](KATA_AUTHORING.md).
+
+### Quick Start for Kata Authors
+
+1. **Use Template**: Copy from `kata-templates/` directory for your kata type
+2. **Create Directory**: `cp -r kata-templates/code-kata-python katas/your-kata-name`
+3. **Update Metadata**: Edit `meta.yaml` with your kata details
+4. **Write Statement**: Update `statement.md` with problem description
+5. **Add Code**: Update starter code and test files
+6. **Test Locally**: Run the app and verify your kata works correctly
+
+**Available Templates**:
+- `kata-templates/code-kata-python/` - Python programming challenges
+- `kata-templates/explanation-kata/` - Technical explanation challenges
+- `kata-templates/template-kata/` - Project template creation challenges
+
+See the `two-sum-example` kata for a complete reference implementation.
 
 ## Technology Stack
 
