@@ -752,8 +752,8 @@ export class CodeExecutionService {
         // Execute the compiled binary with test cases
         const result = await this.runCppTests(kataPath, fullTestPath, timeoutMs)
         
-        // Parse test results from output
-        const testResults = this.parseCppTestResults(result.testResults, result.success)
+        // Parse test results from output - the success status is already determined in runCppTests
+        const testResults = result.testResults
         
         // Calculate score if tests passed
         let score: number | undefined
@@ -762,8 +762,11 @@ export class CodeExecutionService {
           score = (passedTests / testResults.length) * 100
         }
 
+        // Determine overall success based on test results
+        const overallSuccess = testResults.length > 0 && testResults.every(t => t.passed)
+        
         return {
-          success: result.success,
+          success: overallSuccess,
           output: result.output,
           errors: result.errors,
           testResults,
@@ -1044,21 +1047,7 @@ export class CodeExecutionService {
     })
   }
 
-  /**
-   * Parse C++ test results into TestResult format
-   */
-  private parseCppTestResults(
-    testResults: Array<{ name: string; passed: boolean; message: string; input?: string; expected?: string; actual?: string }>,
-    success: boolean
-  ): TestResult[] {
-    return testResults.map(result => ({
-      name: result.name,
-      passed: result.passed,
-      message: result.message,
-      expected: result.expected,
-      actual: result.actual
-    }))
-  }
+
 
   /**
    * Execute code for any supported language (placeholder for other languages)

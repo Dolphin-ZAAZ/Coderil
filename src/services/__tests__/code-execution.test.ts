@@ -974,7 +974,7 @@ int main() {
         expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
       } else {
         expect(result.success).toBe(false)
-        expect(result.testResults.some(t => t.message.includes('timed out') || t.message.includes('Execution timed out'))).toBe(true)
+        expect(result.testResults.some(t => t.message?.includes('timed out') || t.message?.includes('Execution timed out'))).toBe(true)
       }
     }, 15000)
 

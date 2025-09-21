@@ -368,3 +368,16 @@ export interface ResultsPanelProps {
   aiJudgment: AIJudgment | null
   isLoading: boolean
 }
+
+export interface ScoringConfig {
+  publicWeight: number
+  hiddenWeight: number
+  passingThreshold: number
+}
+
+export interface CombinedExecutionResult extends ExecutionResult {
+  publicResults?: ExecutionResult
+  hiddenResults?: ExecutionResult
+  finalScore: number
+  passed: boolean
+}

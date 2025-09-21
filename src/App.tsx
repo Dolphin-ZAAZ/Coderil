@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector } from '@/components'
+import { ScoringService } from '@/services/scoring'
 import './App.css'
 
 function App() {
@@ -13,6 +14,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
+  
+  const scoringService = ScoringService.getInstance()
 
   useEffect(() => {
     // Load katas and settings on app start
@@ -153,7 +156,9 @@ function App() {
         kataDetails.metadata.timeout_ms
       )
       
-      setExecutionResults(result)
+      // Process result through scoring service
+      const processedResult = scoringService.processResult(result)
+      setExecutionResults(processedResult)
     } catch (error) {
       console.error('Failed to run code:', error)
       setExecutionResults({
@@ -188,7 +193,9 @@ function App() {
           totalScore: 70
         }
         
-        setAiJudgment(mockAiJudgment)
+        // Process AI judgment through scoring service
+        const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
+        setAiJudgment(processedJudgment)
       } else if (kataDetails.type === 'template') {
         // AI judging for template katas (placeholder - will be implemented in task 13.1)
         const mockAiJudgment: AIJudgment = {
@@ -198,7 +205,9 @@ function App() {
           totalScore: 75
         }
         
-        setAiJudgment(mockAiJudgment)
+        // Process AI judgment through scoring service
+        const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
+        setAiJudgment(processedJudgment)
       } else {
         // Code execution for code katas - run both public and hidden tests
         const publicResult = await window.electronAPI.executeCode(
@@ -217,19 +226,8 @@ function App() {
           kataDetails.metadata.timeout_ms
         )
         
-        // Combine results with weighted scoring (30% public, 70% hidden)
-        const publicScore = publicResult.score || 0
-        const hiddenScore = hiddenResult.score || 0
-        const finalScore = (publicScore * 0.3) + (hiddenScore * 0.7)
-        
-        const combinedResult: ExecutionResult = {
-          success: publicResult.success && hiddenResult.success,
-          output: publicResult.output + '\n--- Hidden Tests ---\n' + hiddenResult.output,
-          errors: publicResult.errors + (hiddenResult.errors ? '\n' + hiddenResult.errors : ''),
-          testResults: [...publicResult.testResults, ...hiddenResult.testResults],
-          score: finalScore,
-          duration: publicResult.duration + hiddenResult.duration
-        }
+        // Use scoring service to combine results with proper weighting
+        const combinedResult = scoringService.combineResults(publicResult, hiddenResult)
         
         setExecutionResults(combinedResult)
         
@@ -238,8 +236,8 @@ function App() {
           kataId: selectedKata.slug,
           timestamp: new Date().toISOString(),
           language: kataDetails.language,
-          status: combinedResult.success ? 'passed' : 'failed',
-          score: finalScore,
+          status: combinedResult.passed ? 'passed' : 'failed',
+          score: combinedResult.finalScore,
           durationMs: combinedResult.duration,
           code: currentCode
         })

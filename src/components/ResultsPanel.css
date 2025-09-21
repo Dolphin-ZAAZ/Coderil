@@ -89,6 +89,52 @@
   gap: 1.5rem;
 }
 
+.scoring-breakdown {
+  background-color: #2a2a2a;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.scoring-breakdown h4 {
+  margin: 0 0 0.75rem 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.scoring-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scoring-details .score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.scoring-details .score-item.final-score {
+  border-top: 1px solid #444;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.scoring-details .score-label {
+  flex: 1;
+}
+
+.scoring-details .score-value {
+  font-weight: 500;
+  min-width: 60px;
+  text-align: right;
+}
+
 .test-results h4,
 .output-section h4,
 .error-section h4,
@@ -351,5 +397,23 @@
 
   .feedback-content p {
     color: #495057;
+  }
+
+  .scoring-breakdown {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+  }
+
+  .scoring-breakdown h4 {
+    color: #212529;
+  }
+
+  .scoring-details .score-item {
+    color: #495057;
+  }
+
+  .scoring-details .score-item.final-score {
+    border-top-color: #dee2e6;
+    color: #212529;
   }
 }

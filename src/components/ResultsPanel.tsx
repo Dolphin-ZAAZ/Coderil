@@ -1,7 +1,10 @@
-import { ResultsPanelProps } from '@/types'
+import { ResultsPanelProps, CombinedExecutionResult } from '@/types'
+import { ScoringService } from '@/services/scoring'
 import './ResultsPanel.css'
 
 export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelProps) {
+  const scoringService = ScoringService.getInstance()
+  const isCombinedResult = results && 'finalScore' in results && 'passed' in results
   if (isLoading) {
     return (
       <div className="results-panel">
@@ -39,11 +42,13 @@ export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelPro
         <h3>Results</h3>
         {results && (
           <div className="results-summary">
-            <span className={`status ${results.success ? 'success' : 'failure'}`}>
-              {results.success ? 'Passed' : 'Failed'}
+            <span className={`status ${isCombinedResult ? (results as CombinedExecutionResult).passed : results.success ? 'success' : 'failure'}`}>
+              {isCombinedResult ? ((results as CombinedExecutionResult).passed ? 'Passed' : 'Failed') : (results.success ? 'Passed' : 'Failed')}
             </span>
             {results.score !== undefined && (
-              <span className="score">Score: {Math.round(results.score)}%</span>
+              <span className="score">
+                Score: {Math.round(isCombinedResult ? (results as CombinedExecutionResult).finalScore : results.score)}%
+              </span>
             )}
           </div>
         )}
@@ -52,6 +57,32 @@ export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelPro
       <div className="results-content">
         {results && (
           <div className="execution-results">
+            {isCombinedResult && (
+              <div className="scoring-breakdown">
+                <h4>Scoring Breakdown</h4>
+                {(() => {
+                  const combinedResult = results as CombinedExecutionResult
+                  const summary = scoringService.getScoringSummary(combinedResult)
+                  return (
+                    <div className="scoring-details">
+                      <div className="score-item">
+                        <span className="score-label">Public Tests (30%)</span>
+                        <span className="score-value">{Math.round(summary.publicScore)}%</span>
+                      </div>
+                      <div className="score-item">
+                        <span className="score-label">Hidden Tests (70%)</span>
+                        <span className="score-value">{Math.round(summary.hiddenScore)}%</span>
+                      </div>
+                      <div className="score-item final-score">
+                        <span className="score-label">Final Score</span>
+                        <span className="score-value">{Math.round(summary.finalScore)}%</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+            
             <div className="test-results">
               <h4>Test Results</h4>
               {results.testResults.length > 0 ? (
