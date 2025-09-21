@@ -16,6 +16,11 @@ export default defineConfig({
           }
         },
         vite: {
+          resolve: {
+            alias: {
+              '@': resolve(__dirname, 'src')
+            }
+          },
           build: {
             sourcemap: true,
             minify: false,
@@ -32,6 +37,11 @@ export default defineConfig({
           options.reload()
         },
         vite: {
+          resolve: {
+            alias: {
+              '@': resolve(__dirname, 'src')
+            }
+          },
           build: {
             sourcemap: 'inline',
             minify: false,

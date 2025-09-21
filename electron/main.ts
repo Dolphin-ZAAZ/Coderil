@@ -128,16 +128,31 @@ ipcMain.handle('open-win', (_, arg) => {
   }
 })
 
-// Placeholder IPC handlers - will be implemented in later tasks
+// Kata management IPC handlers
 ipcMain.handle('get-katas', async () => {
-  // TODO: Implement in task 4
-  return []
+  try {
+    const { KataManagerService } = await import('../src/services/kata-manager.js')
+    const kataManager = KataManagerService.getInstance()
+    const katas = await kataManager.loadKatas()
+    console.log(`Loaded ${katas.length} katas`)
+    return katas
+  } catch (error) {
+    console.error('Failed to load katas:', error)
+    return []
+  }
 })
 
 ipcMain.handle('load-kata', async (_event, slug: string) => {
-  // TODO: Implement in task 4
-  console.log('Loading kata:', slug)
-  return null
+  try {
+    const { KataManagerService } = await import('../src/services/kata-manager.js')
+    const kataManager = KataManagerService.getInstance()
+    const kata = await kataManager.loadKata(slug)
+    console.log('Loaded kata details:', slug)
+    return kata
+  } catch (error) {
+    console.error('Failed to load kata:', slug, error)
+    return null
+  }
 })
 
 ipcMain.handle('execute-code', async (_event, language: string, _code: string, _testFile: string, hidden: boolean) => {

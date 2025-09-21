@@ -4,7 +4,7 @@
   "description": "Automatically builds the project and debugs any compiler errors after significant changes or task completions, rather than on every file change",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "src/**/*.ts",
       "src/**/*.tsx",

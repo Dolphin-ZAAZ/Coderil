@@ -200,8 +200,12 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
     if (!metadata.test.kind || !validateTestKind(metadata.test.kind)) {
       errors.push('test.kind is required and must be one of: programmatic, io, none')
     }
-    if (!metadata.test.file || typeof metadata.test.file !== 'string') {
+    if (typeof metadata.test.file !== 'string') {
       errors.push('test.file is required and must be a string')
+    }
+    // For 'none' test kind, file can be empty or 'none'
+    if (metadata.test.kind !== 'none' && (!metadata.test.file || metadata.test.file.trim() === '')) {
+      errors.push('test.file cannot be empty for programmatic and io test kinds')
     }
   }
 
