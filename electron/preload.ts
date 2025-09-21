@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
+    return ipcRenderer.on(channel, (event: any, ...args: any[]) => (listener as any)(event, ...args))
   },
   off(...args: Parameters<typeof ipcRenderer.off>) {
     const [channel, ...omit] = args
@@ -29,8 +29,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportKata: (slug: string) => ipcRenderer.invoke('export-kata', slug),
   
   // Code execution
-  executeCode: (language: string, code: string, testFile: string, hidden: boolean) =>
-    ipcRenderer.invoke('execute-code', language, code, testFile, hidden),
+  executeCode: (language: string, code: string, kataPath: string, hidden: boolean, timeoutMs?: number) =>
+    ipcRenderer.invoke('execute-code', language, code, kataPath, hidden, timeoutMs),
   
   // Progress tracking
   saveAttempt: (attempt: any) => ipcRenderer.invoke('save-attempt', attempt),
@@ -67,7 +67,7 @@ export interface ElectronAPI {
   loadKata: (slug: string) => Promise<any>
   importKata: (zipPath: string) => Promise<void>
   exportKata: (slug: string) => Promise<string>
-  executeCode: (language: string, code: string, testFile: string, hidden: boolean) => Promise<any>
+  executeCode: (language: string, code: string, kataPath: string, hidden: boolean, timeoutMs?: number) => Promise<any>
   saveAttempt: (attempt: any) => Promise<void>
   getProgress: (kataId: string) => Promise<any>
   updateProgress: (kataId: string, progress: any) => Promise<void>

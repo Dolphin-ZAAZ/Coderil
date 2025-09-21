@@ -58,31 +58,41 @@ function App() {
     setAiJudgment(null)
     
     try {
-      // Load kata details (placeholder - will be implemented in later tasks)
-      const details: KataDetails = {
-        ...kata,
-        statement: `# ${kata.title}\n\nThis is a placeholder statement for the ${kata.title} kata.\n\nThe actual statement will be loaded from the kata's statement.md file in later tasks.`,
-        metadata: {
-          slug: kata.slug,
-          title: kata.title,
-          language: kata.language as Language,
-          type: kata.type as any,
-          difficulty: kata.difficulty as any,
-          tags: kata.tags,
-          entry: `entry.${kata.language}`,
-          test: { kind: 'programmatic', file: `tests.${kata.language}` },
-          timeout_ms: 5000
-        },
-        starterCode: getStarterCodePlaceholder(kata.language as Language),
-        testConfig: {
-          kind: 'programmatic',
-          publicTestFile: `tests.${kata.language}`,
-          timeoutMs: 5000
+      // Load actual kata details from the main process
+      const details = await window.electronAPI.loadKata(kata.slug)
+      if (details) {
+        setKataDetails(details)
+        
+        // Try to load saved code first, otherwise use starter code
+        const savedCode = await window.electronAPI.loadCode(kata.slug)
+        setCurrentCode(savedCode || details.starterCode)
+      } else {
+        // Fallback to placeholder if loading fails
+        const fallbackDetails: KataDetails = {
+          ...kata,
+          statement: `# ${kata.title}\n\nFailed to load kata details. Please check the kata files.`,
+          metadata: {
+            slug: kata.slug,
+            title: kata.title,
+            language: kata.language as Language,
+            type: kata.type as any,
+            difficulty: kata.difficulty as any,
+            tags: kata.tags,
+            entry: `entry.${kata.language}`,
+            test: { kind: 'programmatic', file: `tests.${kata.language}` },
+            timeout_ms: 5000
+          },
+          starterCode: getStarterCodePlaceholder(kata.language as Language),
+          testConfig: {
+            kind: 'programmatic',
+            publicTestFile: `tests.${kata.language}`,
+            timeoutMs: 5000
+          }
         }
+        
+        setKataDetails(fallbackDetails)
+        setCurrentCode(fallbackDetails.starterCode)
       }
-      
-      setKataDetails(details)
-      setCurrentCode(details.starterCode)
     } catch (error) {
       console.error('Failed to load kata details:', error)
     }
@@ -124,79 +134,126 @@ function App() {
   }
 
   const handleRun = async () => {
-    if (!kataDetails) return
+    if (!kataDetails || !selectedKata) return
     
     setIsExecuting(true)
     setExecutionResults(null)
     setAiJudgment(null)
     
     try {
-      // Placeholder for code execution - will be implemented in later tasks
-      const mockResult: ExecutionResult = {
-        success: true,
-        output: 'Mock execution output\nThis will be replaced with actual execution in later tasks.',
-        errors: '',
-        testResults: [
-          { name: 'Test 1', passed: true, message: 'Mock test passed' },
-          { name: 'Test 2', passed: false, message: 'Mock test failed', expected: 'expected', actual: 'actual' }
-        ],
-        score: 50,
-        duration: 123
-      }
+      // Save current code before execution
+      await window.electronAPI.saveCode(selectedKata.slug, currentCode)
       
-      setTimeout(() => {
-        setExecutionResults(mockResult)
-        setIsExecuting(false)
-      }, 1000)
+      // Execute code with public tests only
+      const result = await window.electronAPI.executeCode(
+        kataDetails.language,
+        currentCode,
+        selectedKata.path,
+        false, // hidden = false for public tests
+        kataDetails.metadata.timeout_ms
+      )
+      
+      setExecutionResults(result)
     } catch (error) {
       console.error('Failed to run code:', error)
+      setExecutionResults({
+        success: false,
+        output: '',
+        errors: `Execution failed: ${error}`,
+        testResults: [],
+        duration: 0
+      })
+    } finally {
       setIsExecuting(false)
     }
   }
 
   const handleSubmit = async () => {
-    if (!kataDetails) return
+    if (!kataDetails || !selectedKata) return
     
     setIsExecuting(true)
     setExecutionResults(null)
     setAiJudgment(null)
     
     try {
-      // Placeholder for code execution and AI judging - will be implemented in later tasks
+      // Save current code before execution
+      await window.electronAPI.saveCode(selectedKata.slug, currentCode)
+      
       if (kataDetails.type === 'explain') {
+        // AI judging for explanation katas (placeholder - will be implemented in task 13)
         const mockAiJudgment: AIJudgment = {
           scores: { clarity: 80, correctness: 70, completeness: 60 },
-          feedback: 'Mock AI feedback: Your explanation shows good understanding but could be more detailed.',
+          feedback: 'AI judging not implemented yet. This is a placeholder response.',
           pass: false,
           totalScore: 70
         }
         
-        setTimeout(() => {
-          setAiJudgment(mockAiJudgment)
-          setIsExecuting(false)
-        }, 2000)
-      } else {
-        const mockResult: ExecutionResult = {
-          success: false,
-          output: 'Mock submission output\nThis will be replaced with actual execution in later tasks.',
-          errors: 'Mock error message',
-          testResults: [
-            { name: 'Public Test 1', passed: true },
-            { name: 'Public Test 2', passed: true },
-            { name: 'Hidden Test 1', passed: false, message: 'Hidden test failed' },
-            { name: 'Hidden Test 2', passed: true }
-          ],
-          score: 75,
-          duration: 234
+        setAiJudgment(mockAiJudgment)
+      } else if (kataDetails.type === 'template') {
+        // AI judging for template katas (placeholder - will be implemented in task 13.1)
+        const mockAiJudgment: AIJudgment = {
+          scores: { structure: 75, completeness: 80, best_practices: 70 },
+          feedback: 'Template judging not implemented yet. This is a placeholder response.',
+          pass: false,
+          totalScore: 75
         }
         
-        setTimeout(() => {
-          setExecutionResults(mockResult)
-          setIsExecuting(false)
-        }, 2000)
+        setAiJudgment(mockAiJudgment)
+      } else {
+        // Code execution for code katas - run both public and hidden tests
+        const publicResult = await window.electronAPI.executeCode(
+          kataDetails.language,
+          currentCode,
+          selectedKata.path,
+          false, // public tests
+          kataDetails.metadata.timeout_ms
+        )
+        
+        const hiddenResult = await window.electronAPI.executeCode(
+          kataDetails.language,
+          currentCode,
+          selectedKata.path,
+          true, // hidden tests
+          kataDetails.metadata.timeout_ms
+        )
+        
+        // Combine results with weighted scoring (30% public, 70% hidden)
+        const publicScore = publicResult.score || 0
+        const hiddenScore = hiddenResult.score || 0
+        const finalScore = (publicScore * 0.3) + (hiddenScore * 0.7)
+        
+        const combinedResult: ExecutionResult = {
+          success: publicResult.success && hiddenResult.success,
+          output: publicResult.output + '\n--- Hidden Tests ---\n' + hiddenResult.output,
+          errors: publicResult.errors + (hiddenResult.errors ? '\n' + hiddenResult.errors : ''),
+          testResults: [...publicResult.testResults, ...hiddenResult.testResults],
+          score: finalScore,
+          duration: publicResult.duration + hiddenResult.duration
+        }
+        
+        setExecutionResults(combinedResult)
+        
+        // Save attempt to database
+        await window.electronAPI.saveAttempt({
+          kataId: selectedKata.slug,
+          timestamp: new Date().toISOString(),
+          language: kataDetails.language,
+          status: combinedResult.success ? 'passed' : 'failed',
+          score: finalScore,
+          durationMs: combinedResult.duration,
+          code: currentCode
+        })
       }
     } catch (error) {
       console.error('Failed to submit code:', error)
+      setExecutionResults({
+        success: false,
+        output: '',
+        errors: `Submission failed: ${error}`,
+        testResults: [],
+        duration: 0
+      })
+    } finally {
       setIsExecuting(false)
     }
   }

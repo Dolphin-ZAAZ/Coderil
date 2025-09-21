@@ -176,10 +176,40 @@ ipcMain.handle('load-kata', async (_event, slug: string) => {
   }
 })
 
-ipcMain.handle('execute-code', async (_event, language: string, _code: string, _testFile: string, hidden: boolean) => {
-  // TODO: Implement in tasks 9-11
-  console.log('Executing code:', { language, hidden })
-  return { success: false, output: '', errors: 'Not implemented yet', testResults: [], duration: 0 }
+ipcMain.handle('execute-code', async (_event, language: string, code: string, kataPath: string, hidden: boolean, timeoutMs: number = 5000) => {
+  try {
+    console.log('Executing code:', { language, hidden, kataPath, timeoutMs })
+    
+    const { CodeExecutionService } = await import('../src/services/code-execution')
+    const executionService = CodeExecutionService.getInstance()
+    
+    const result = await executionService.executeCode(
+      language as any, // Type assertion since we validate in the service
+      code,
+      '', // testFilePath is determined internally
+      kataPath,
+      hidden,
+      timeoutMs
+    )
+    
+    console.log('Execution completed:', { 
+      success: result.success, 
+      testCount: result.testResults.length,
+      score: result.score,
+      duration: result.duration
+    })
+    
+    return result
+  } catch (error: any) {
+    console.error('Failed to execute code:', error)
+    return {
+      success: false,
+      output: '',
+      errors: `Execution failed: ${error.message}`,
+      testResults: [],
+      duration: 0
+    }
+  }
 })
 
 ipcMain.handle('save-attempt', async (_event, attempt: any) => {
