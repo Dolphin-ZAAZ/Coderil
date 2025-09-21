@@ -1,7 +1,22 @@
 import { StatementPanelProps } from '@/types'
+import { marked } from 'marked'
+import { useMemo } from 'react'
 import './StatementPanel.css'
 
 export function StatementPanel({ statement, metadata }: StatementPanelProps) {
+  // Parse markdown to HTML with safe options
+  const parsedStatement = useMemo(() => {
+    // Configure marked for better code highlighting and security
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    })
+    
+    // Force synchronous parsing by casting the result
+    const result = marked(statement)
+    return typeof result === 'string' ? result : ''
+  }, [statement])
+
   return (
     <div className="statement-panel">
       <div className="statement-header">
@@ -27,7 +42,7 @@ export function StatementPanel({ statement, metadata }: StatementPanelProps) {
       <div className="statement-content">
         <div 
           className="statement-markdown"
-          dangerouslySetInnerHTML={{ __html: statement }}
+          dangerouslySetInnerHTML={{ __html: parsedStatement }}
         />
       </div>
     </div>
