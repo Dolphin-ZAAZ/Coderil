@@ -297,9 +297,20 @@ export class CodeExecutionService {
       const userCodePath = join(kataPath, 'entry.js')
       const originalCode = existsSync(userCodePath) ? readFileSync(userCodePath, 'utf8') : null
       
+      // Create package.json to ensure CommonJS mode
+      const packageJsonPath = join(kataPath, 'package.json')
+      const originalPackageJson = existsSync(packageJsonPath) ? readFileSync(packageJsonPath, 'utf8') : null
+      
       try {
         // Write user code temporarily
         writeFileSync(userCodePath, userCode)
+
+        // Create a package.json to force CommonJS mode if it doesn't exist
+        if (!originalPackageJson) {
+          writeFileSync(packageJsonPath, JSON.stringify({
+            "type": "commonjs"
+          }, null, 2))
+        }
 
         // Execute JavaScript tests from the kata directory
         const result = await this.runNodeProcess(fullTestPath, kataPath, timeoutMs)
@@ -329,6 +340,18 @@ export class CodeExecutionService {
         // Restore original code if it existed
         if (originalCode !== null) {
           writeFileSync(userCodePath, originalCode)
+        }
+        
+        // Restore or remove package.json
+        if (originalPackageJson !== null) {
+          writeFileSync(packageJsonPath, originalPackageJson)
+        } else if (existsSync(packageJsonPath)) {
+          // Remove the package.json we created if it didn't exist before
+          try {
+            require('fs').unlinkSync(packageJsonPath)
+          } catch (e) {
+            // Ignore cleanup errors
+          }
         }
       }
 
@@ -375,15 +398,26 @@ export class CodeExecutionService {
       const userCodePath = join(kataPath, 'entry.ts')
       const originalCode = existsSync(userCodePath) ? readFileSync(userCodePath, 'utf8') : null
       
+      // Create package.json to ensure CommonJS mode
+      const packageJsonPath = join(kataPath, 'package.json')
+      const originalPackageJson = existsSync(packageJsonPath) ? readFileSync(packageJsonPath, 'utf8') : null
+      
       try {
         // Write user code temporarily
         writeFileSync(userCodePath, userCode)
+
+        // Create a package.json to force CommonJS mode if it doesn't exist
+        if (!originalPackageJson) {
+          writeFileSync(packageJsonPath, JSON.stringify({
+            "type": "commonjs"
+          }, null, 2))
+        }
 
         // Try to compile TypeScript to JavaScript
         const compileResult = await this.compileTypeScript(kataPath, timeoutMs, testFileName)
         if (!compileResult.success) {
           // If compilation fails, check if it's due to missing TypeScript compiler
-          if (compileResult.stderr.includes('ENOENT') || compileResult.stderr.includes('spawn')) {
+          if (compileResult.stderr.includes('ENOENT') || compileResult.stderr.includes('spawn') || compileResult.stderr.includes('not found')) {
             return {
               success: false,
               output: '',
@@ -440,6 +474,18 @@ export class CodeExecutionService {
         if (originalCode !== null) {
           writeFileSync(userCodePath, originalCode)
         }
+        
+        // Restore or remove package.json
+        if (originalPackageJson !== null) {
+          writeFileSync(packageJsonPath, originalPackageJson)
+        } else if (existsSync(packageJsonPath)) {
+          // Remove the package.json we created if it didn't exist before
+          try {
+            require('fs').unlinkSync(packageJsonPath)
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }
       }
 
     } catch (error: any) {
@@ -466,8 +512,10 @@ export class CodeExecutionService {
       let stderr = ''
       let isResolved = false
 
-      // Use tsc directly to compile TypeScript files
-      const tscProcess = spawn('tsc', [
+      // First try npx tsc, then fall back to tsc
+      const tscCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+      const tscArgs = [
+        'tsc',
         '--target', 'es2020', 
         '--module', 'commonjs', 
         '--esModuleInterop', 
@@ -476,7 +524,10 @@ export class CodeExecutionService {
         '--skipLibCheck',
         'entry.ts',
         testFileName
-      ], {
+      ]
+
+      // Use npx tsc to ensure TypeScript is available
+      const tscProcess = spawn(tscCommand, tscArgs, {
         cwd: kataPath,
         stdio: ['pipe', 'pipe', 'pipe']
       })
@@ -517,7 +568,87 @@ export class CodeExecutionService {
         }
       })
 
-      // Handle process errors
+      // Handle process errors (like command not found)
+      tscProcess.on('error', (error) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          
+          // If npx fails, try direct tsc command
+          if (error.message.includes('ENOENT') || error.message.includes('spawn')) {
+            // Try fallback to direct tsc
+            this.tryDirectTsc(kataPath, timeoutMs, testFileName).then(resolve)
+          } else {
+            resolve({
+              success: false,
+              stdout,
+              stderr: stderr + `\nTypeScript compilation error: ${error.message}`
+            })
+          }
+        }
+      })
+    })
+  }
+
+  /**
+   * Fallback method to try direct tsc command
+   */
+  private tryDirectTsc(
+    kataPath: string,
+    timeoutMs: number,
+    testFileName: string = 'tests.ts'
+  ): Promise<{ success: boolean; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+      let stdout = ''
+      let stderr = ''
+      let isResolved = false
+
+      const tscProcess = spawn('tsc', [
+        '--target', 'es2020', 
+        '--module', 'commonjs', 
+        '--esModuleInterop', 
+        '--allowSyntheticDefaultImports',
+        '--moduleResolution', 'node',
+        '--skipLibCheck',
+        'entry.ts',
+        testFileName
+      ], {
+        cwd: kataPath,
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true
+          tscProcess.kill('SIGKILL')
+          resolve({
+            success: false,
+            stdout,
+            stderr: stderr + '\nTypeScript compilation timed out'
+          })
+        }
+      }, timeoutMs)
+
+      tscProcess.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      tscProcess.stderr?.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      tscProcess.on('close', (code) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          resolve({
+            success: code === 0,
+            stdout,
+            stderr
+          })
+        }
+      })
+
       tscProcess.on('error', (error) => {
         if (!isResolved) {
           isResolved = true
@@ -525,7 +656,7 @@ export class CodeExecutionService {
           resolve({
             success: false,
             stdout,
-            stderr: stderr + `\nTypeScript compilation error: ${error.message}`
+            stderr: `TypeScript compiler not found. Please install TypeScript:\nnpm install -g typescript\n\nError: ${error.message}`
           })
         }
       })
