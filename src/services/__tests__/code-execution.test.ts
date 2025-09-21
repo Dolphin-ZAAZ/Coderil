@@ -758,6 +758,356 @@ export function simpleFunction(): string {
     })
   })
 
+  describe('C++ execution', () => {
+    it('should execute C++ code with passing tests', async () => {
+      // Create test file in the expected I/O format
+      const testContent = `5
+h e l l o
+---
+o l l e h
+===
+3
+A B C
+---
+C B A
+===
+1
+x
+---
+x`
+
+      const userCode = `#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+void reverseString(vector<char>& s) {
+    int left = 0;
+    int right = s.size() - 1;
+    
+    while (left < right) {
+        char temp = s[left];
+        s[left] = s[right];
+        s[right] = temp;
+        left++;
+        right--;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<char> s(n);
+    for (int i = 0; i < n; i++) {
+        cin >> s[i];
+    }
+    
+    reverseString(s);
+    
+    for (int i = 0; i < n; i++) {
+        cout << s[i];
+        if (i < n - 1) cout << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        10000
+      )
+
+      // In test environment, C++ compiler may not be available
+      if (result.errors.includes('C++ compilation error') || result.errors.includes('spawn')) {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(true)
+        expect(result.output).toBeTruthy()
+        expect(result.testResults).toHaveLength(3)
+        expect(result.testResults.every(t => t.passed)).toBe(true)
+        expect(result.score).toBe(100)
+        expect(result.duration).toBeGreaterThan(0)
+      }
+    }, 15000)
+
+    it('should handle C++ code with failing tests', async () => {
+      const testContent = `3
+A B C
+---
+C B A
+===
+2
+X Y
+---
+Y X`
+
+      const userCode = `#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+void reverseString(vector<char>& s) {
+    // Bug: not actually reversing
+    // Just leave the string as is
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<char> s(n);
+    for (int i = 0; i < n; i++) {
+        cin >> s[i];
+    }
+    
+    reverseString(s);
+    
+    for (int i = 0; i < n; i++) {
+        cout << s[i];
+        if (i < n - 1) cout << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        10000
+      )
+
+      // In test environment, C++ compiler may not be available
+      if (result.errors.includes('C++ compilation error') || result.errors.includes('spawn')) {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(false)
+        expect(result.testResults.length).toBeGreaterThan(0)
+        expect(result.testResults.some(t => !t.passed)).toBe(true)
+        expect(result.score).toBeLessThan(100)
+      }
+    }, 15000)
+
+    it('should handle C++ compilation errors', async () => {
+      const testContent = `1
+x
+---
+x`
+
+      const userCode = `#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    // Syntax error: missing semicolon and other issues
+    int n
+    cin >> n;
+    
+    // Undefined variable
+    cout << undefined_variable << endl;
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        10000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+    }, 15000)
+
+    it('should handle timeout for infinite loops in C++', async () => {
+      const testContent = `1
+x
+---
+x`
+
+      const userCode = `#include <iostream>
+
+using namespace std;
+
+int main() {
+    // Infinite loop
+    while (true) {
+        // Do nothing forever
+    }
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        2000 // Short timeout
+      )
+
+      // In test environment, C++ compiler may not be available
+      if (result.errors.includes('C++ compilation error') || result.errors.includes('spawn')) {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.message.includes('timed out') || t.message.includes('Execution timed out'))).toBe(true)
+      }
+    }, 15000)
+
+    it('should handle missing C++ test file', async () => {
+      const userCode = `#include <iostream>
+
+using namespace std;
+
+int main() {
+    cout << "Hello World" << endl;
+    return 0;
+}`
+
+      // Don't create the test file
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContain('Test file not found')
+    })
+
+    it('should execute hidden tests when requested', async () => {
+      const publicTestContent = `2
+A B
+---
+B A`
+
+      const hiddenTestContent = `4
+1 2 3 4
+---
+4 3 2 1
+===
+6
+a b c d e f
+---
+f e d c b a`
+
+      const userCode = `#include <iostream>
+#include <vector>
+
+using namespace std;
+
+void reverseString(vector<char>& s) {
+    int left = 0;
+    int right = s.size() - 1;
+    
+    while (left < right) {
+        char temp = s[left];
+        s[left] = s[right];
+        s[right] = temp;
+        left++;
+        right--;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<char> s(n);
+    for (int i = 0; i < n; i++) {
+        cin >> s[i];
+    }
+    
+    reverseString(s);
+    
+    for (int i = 0; i < n; i++) {
+        cout << s[i];
+        if (i < n - 1) cout << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), publicTestContent)
+      writeFileSync(join(testKataPath, 'hidden_tests.txt'), hiddenTestContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'hidden_tests.txt',
+        testKataPath,
+        true, // hidden = true
+        10000
+      )
+
+      // In test environment, C++ compiler may not be available
+      if (result.errors.includes('C++ compilation error') || result.errors.includes('spawn')) {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(true)
+        expect(result.testResults).toHaveLength(2)
+        expect(result.testResults.every(t => t.passed)).toBe(true)
+        expect(result.score).toBe(100)
+      }
+    }, 15000)
+
+    it('should handle malformed test file format', async () => {
+      const testContent = `This is not a valid test file format
+No separators here
+Just random text`
+
+      const userCode = `#include <iostream>
+
+using namespace std;
+
+int main() {
+    cout << "Hello" << endl;
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
+      const result = await executionService.executeCpp(
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContain('No test cases found')
+    })
+  })
+
   describe('executeCode method', () => {
     it('should route Python execution correctly', async () => {
       const testCode = `
@@ -892,18 +1242,92 @@ export function simpleFunc(): string {
       }
     }, 15000)
 
-    it('should return not implemented for unsupported languages', async () => {
+    it('should route C++ execution correctly', async () => {
+      // Create test file in the expected format
+      const testContent = `5
+h e l l o
+---
+o l l e h
+===
+3
+A B C
+---
+C B A`
+
+      const userCode = `#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+void reverseString(vector<char>& s) {
+    int left = 0;
+    int right = s.size() - 1;
+    
+    while (left < right) {
+        char temp = s[left];
+        s[left] = s[right];
+        s[right] = temp;
+        left++;
+        right--;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<char> s(n);
+    for (int i = 0; i < n; i++) {
+        cin >> s[i];
+    }
+    
+    reverseString(s);
+    
+    for (int i = 0; i < n; i++) {
+        cout << s[i];
+        if (i < n - 1) cout << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}`
+
+      writeFileSync(join(testKataPath, 'tests.txt'), testContent)
+
       const result = await executionService.executeCode(
         'cpp',
-        'int main() { return 0; }',
-        'test.cpp',
+        userCode,
+        'tests.txt',
+        testKataPath,
+        false,
+        10000
+      )
+
+      // In test environment, C++ compiler may not be available
+      if (result.errors.includes('C++ compilation error') || result.errors.includes('spawn')) {
+        expect(result.success).toBe(false)
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(true)
+        expect(result.score).toBe(100)
+        expect(result.testResults).toHaveLength(2)
+        expect(result.testResults.every(t => t.passed)).toBe(true)
+      }
+    }, 15000)
+
+    it('should return error for unsupported languages', async () => {
+      const result = await executionService.executeCode(
+        'rust' as any,
+        'fn main() { println!("Hello"); }',
+        'test.rs',
         testKataPath,
         false,
         5000
       )
 
       expect(result.success).toBe(false)
-      expect(result.errors).toContain('not implemented yet')
+      expect(result.errors).toContain('Unsupported language')
     })
   })
 })

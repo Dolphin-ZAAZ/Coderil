@@ -698,6 +698,369 @@ export class CodeExecutionService {
   }
 
   /**
+   * Execute C++ code with tests
+   */
+  async executeCpp(
+    userCode: string,
+    _testFilePath: string,
+    kataPath: string,
+    hidden: boolean = false,
+    timeoutMs: number = 5000
+  ): Promise<ExecutionResult> {
+    const startTime = Date.now()
+    
+    try {
+      // Determine which test file to use
+      const testFileName = hidden ? 'hidden_tests.txt' : 'tests.txt'
+      const fullTestPath = join(kataPath, testFileName)
+
+      // Check if test file exists
+      if (!existsSync(fullTestPath)) {
+        return {
+          success: false,
+          output: '',
+          errors: `Test file not found: ${testFileName}`,
+          testResults: [],
+          duration: Date.now() - startTime
+        }
+      }
+
+      // Write user code directly to the kata directory (overwrite entry.cpp)
+      const userCodePath = join(kataPath, 'entry.cpp')
+      const originalCode = existsSync(userCodePath) ? readFileSync(userCodePath, 'utf8') : null
+      
+      try {
+        // Write user code temporarily
+        writeFileSync(userCodePath, userCode)
+
+        // Compile the C++ code
+        const compileResult = await this.compileCpp(kataPath, timeoutMs)
+        if (!compileResult.success) {
+          return {
+            success: false,
+            output: compileResult.stdout,
+            errors: compileResult.stderr,
+            testResults: [{
+              name: 'compilation',
+              passed: false,
+              message: 'C++ compilation failed'
+            }],
+            duration: Date.now() - startTime
+          }
+        }
+
+        // Execute the compiled binary with test cases
+        const result = await this.runCppTests(kataPath, fullTestPath, timeoutMs)
+        
+        // Parse test results from output
+        const testResults = this.parseCppTestResults(result.testResults, result.success)
+        
+        // Calculate score if tests passed
+        let score: number | undefined
+        if (testResults.length > 0) {
+          const passedTests = testResults.filter(t => t.passed).length
+          score = (passedTests / testResults.length) * 100
+        }
+
+        return {
+          success: result.success,
+          output: result.output,
+          errors: result.errors,
+          testResults,
+          score,
+          duration: Date.now() - startTime
+        }
+      } finally {
+        // Restore original code if it existed
+        if (originalCode !== null) {
+          writeFileSync(userCodePath, originalCode)
+        }
+      }
+
+    } catch (error: any) {
+      return {
+        success: false,
+        output: '',
+        errors: `Execution error: ${error.message}`,
+        testResults: [],
+        duration: Date.now() - startTime
+      }
+    }
+  }
+
+  /**
+   * Compile C++ code using g++
+   */
+  private compileCpp(
+    kataPath: string,
+    timeoutMs: number
+  ): Promise<{ success: boolean; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+      let stdout = ''
+      let stderr = ''
+      let isResolved = false
+
+      // Use g++ to compile the C++ code
+      const gppProcess = spawn('g++', [
+        '-std=c++20',
+        '-O2',
+        '-Wall',
+        '-Wextra',
+        '-o', 'solution.exe',
+        'entry.cpp'
+      ], {
+        cwd: kataPath,
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      // Set up timeout
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true
+          gppProcess.kill('SIGKILL')
+          resolve({
+            success: false,
+            stdout,
+            stderr: stderr + '\nC++ compilation timed out'
+          })
+        }
+      }, timeoutMs)
+
+      // Collect stdout
+      gppProcess.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      // Collect stderr
+      gppProcess.stderr?.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      // Handle process completion
+      gppProcess.on('close', (code) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          resolve({
+            success: code === 0,
+            stdout,
+            stderr
+          })
+        }
+      })
+
+      // Handle process errors
+      gppProcess.on('error', (error) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          resolve({
+            success: false,
+            stdout,
+            stderr: stderr + `\nC++ compilation error: ${error.message}`
+          })
+        }
+      })
+    })
+  }
+
+  /**
+   * Run C++ tests by feeding input to the compiled binary and comparing output
+   */
+  private async runCppTests(
+    kataPath: string,
+    testFilePath: string,
+    timeoutMs: number
+  ): Promise<{ success: boolean; output: string; errors: string; testResults: Array<{ name: string; passed: boolean; message: string; input?: string; expected?: string; actual?: string }> }> {
+    try {
+      // Read and parse test file
+      const testContent = readFileSync(testFilePath, 'utf8')
+      const testCases = this.parseCppTestFile(testContent)
+      
+      if (testCases.length === 0) {
+        return {
+          success: false,
+          output: '',
+          errors: 'No test cases found in test file',
+          testResults: []
+        }
+      }
+
+      const testResults: Array<{ name: string; passed: boolean; message: string; input?: string; expected?: string; actual?: string }> = []
+      let allPassed = true
+      let combinedOutput = ''
+      let combinedErrors = ''
+
+      // Run each test case
+      for (let i = 0; i < testCases.length; i++) {
+        const testCase = testCases[i]
+        const testName = `test_${i + 1}`
+        
+        try {
+          const result = await this.runCppBinary(kataPath, testCase.input, timeoutMs)
+          
+          // Trim whitespace from both expected and actual output for comparison
+          const expectedTrimmed = testCase.expectedOutput.trim()
+          const actualTrimmed = result.stdout.trim()
+          
+          const passed = actualTrimmed === expectedTrimmed
+          
+          testResults.push({
+            name: testName,
+            passed,
+            message: passed ? 'Test passed' : `Expected: "${expectedTrimmed}", Got: "${actualTrimmed}"`,
+            input: testCase.input,
+            expected: expectedTrimmed,
+            actual: actualTrimmed
+          })
+          
+          if (!passed) {
+            allPassed = false
+          }
+          
+          combinedOutput += `Test ${i + 1}:\n${result.stdout}\n`
+          if (result.stderr) {
+            combinedErrors += `Test ${i + 1} stderr:\n${result.stderr}\n`
+          }
+          
+        } catch (error: any) {
+          testResults.push({
+            name: testName,
+            passed: false,
+            message: `Test execution failed: ${error.message}`,
+            input: testCase.input,
+            expected: testCase.expectedOutput,
+            actual: ''
+          })
+          allPassed = false
+          combinedErrors += `Test ${i + 1} error: ${error.message}\n`
+        }
+      }
+
+      return {
+        success: allPassed,
+        output: combinedOutput,
+        errors: combinedErrors,
+        testResults
+      }
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        output: '',
+        errors: `Test execution error: ${error.message}`,
+        testResults: []
+      }
+    }
+  }
+
+  /**
+   * Parse C++ test file format (input --- expected output === next test)
+   */
+  private parseCppTestFile(content: string): Array<{ input: string; expectedOutput: string }> {
+    const testCases: Array<{ input: string; expectedOutput: string }> = []
+    
+    // Split by === to get individual test cases
+    const rawTestCases = content.split('===').map(tc => tc.trim()).filter(tc => tc.length > 0)
+    
+    for (const rawTestCase of rawTestCases) {
+      // Split by --- to separate input from expected output
+      const parts = rawTestCase.split('---')
+      if (parts.length === 2) {
+        const input = parts[0].trim()
+        const expectedOutput = parts[1].trim()
+        testCases.push({ input, expectedOutput })
+      }
+    }
+    
+    return testCases
+  }
+
+  /**
+   * Run the compiled C++ binary with given input
+   */
+  private runCppBinary(
+    kataPath: string,
+    input: string,
+    timeoutMs: number
+  ): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      let stdout = ''
+      let stderr = ''
+      let isResolved = false
+
+      // Run the compiled executable
+      const binaryProcess = spawn('./solution.exe', [], {
+        cwd: kataPath,
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      // Set up timeout
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true
+          binaryProcess.kill('SIGKILL')
+          reject(new Error('Execution timed out'))
+        }
+      }, timeoutMs)
+
+      // Send input to the process
+      if (binaryProcess.stdin) {
+        binaryProcess.stdin.write(input)
+        binaryProcess.stdin.end()
+      }
+
+      // Collect stdout
+      binaryProcess.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      // Collect stderr
+      binaryProcess.stderr?.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      // Handle process completion
+      binaryProcess.on('close', (code) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          if (code === 0) {
+            resolve({ stdout, stderr })
+          } else {
+            reject(new Error(`Process exited with code ${code}. stderr: ${stderr}`))
+          }
+        }
+      })
+
+      // Handle process errors
+      binaryProcess.on('error', (error) => {
+        if (!isResolved) {
+          isResolved = true
+          clearTimeout(timeout)
+          reject(error)
+        }
+      })
+    })
+  }
+
+  /**
+   * Parse C++ test results into TestResult format
+   */
+  private parseCppTestResults(
+    testResults: Array<{ name: string; passed: boolean; message: string; input?: string; expected?: string; actual?: string }>,
+    success: boolean
+  ): TestResult[] {
+    return testResults.map(result => ({
+      name: result.name,
+      passed: result.passed,
+      message: result.message,
+      expected: result.expected,
+      actual: result.actual
+    }))
+  }
+
+  /**
    * Execute code for any supported language (placeholder for other languages)
    */
   async executeCode(
@@ -719,14 +1082,7 @@ export class CodeExecutionService {
         return this.executeTypeScript(userCode, testFilePath, kataPath, hidden, timeoutMs)
       
       case 'cpp':
-        // TODO: Implement in task 11
-        return {
-          success: false,
-          output: '',
-          errors: 'C++ execution not implemented yet',
-          testResults: [],
-          duration: 0
-        }
+        return this.executeCpp(userCode, testFilePath, kataPath, hidden, timeoutMs)
       
       default:
         return {
