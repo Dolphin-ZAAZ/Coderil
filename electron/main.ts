@@ -245,16 +245,108 @@ ipcMain.handle('get-progress', async (_event, kataId: string) => {
   }
 })
 
-ipcMain.handle('judge-explanation', async (_event, explanation: string, rubric: any) => {
-  // TODO: Implement in task 13
-  console.log('Judging explanation:', { explanation: explanation.substring(0, 50) + '...', rubric })
-  return { scores: {}, feedback: 'Not implemented yet', pass: false, totalScore: 0 }
+ipcMain.handle('judge-explanation', async (_event, explanation: string, rubric: any, topic?: string, context?: string) => {
+  try {
+    console.log('Judging explanation:', { 
+      explanationLength: explanation.length, 
+      rubric: rubric.keys,
+      topic,
+      hasContext: !!context
+    })
+    
+    // Get AI API key from environment variable
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.')
+    }
+    
+    const { AIJudgeService } = await import('../src/services/ai-judge')
+    const aiJudge = new AIJudgeService({
+      apiKey,
+      // Use default OpenAI settings
+    })
+    
+    const judgment = await aiJudge.judgeExplanation({
+      explanation,
+      rubric,
+      topic,
+      context
+    })
+    
+    console.log('Explanation judgment completed:', {
+      pass: judgment.pass,
+      totalScore: judgment.totalScore,
+      scores: judgment.scores
+    })
+    
+    return judgment
+  } catch (error: any) {
+    console.error('Failed to judge explanation:', error)
+    
+    // Return a structured error response that matches AIJudgment interface
+    return {
+      scores: rubric.keys.reduce((acc: any, key: string) => {
+        acc[key] = 0
+        return acc
+      }, {}),
+      feedback: `AI judging failed: ${error.message}. Please check your OpenAI API configuration and try again.`,
+      pass: false,
+      totalScore: 0
+    }
+  }
 })
 
-ipcMain.handle('judge-template', async (_event, templateContent: string, rubric: any, expectedStructure: any) => {
-  // TODO: Implement in task 13.1
-  console.log('Judging template:', { templateLength: templateContent.length, rubric, expectedStructure })
-  return { scores: {}, feedback: 'Not implemented yet', pass: false, totalScore: 0 }
+ipcMain.handle('judge-template', async (_event, templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) => {
+  try {
+    console.log('Judging template:', { 
+      templateLength: templateContent.length, 
+      rubric: rubric.keys,
+      templateType,
+      hasExpectedStructure: !!expectedStructure,
+      hasContext: !!context
+    })
+    
+    // Get AI API key from environment variable
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.')
+    }
+    
+    const { AIJudgeService } = await import('../src/services/ai-judge')
+    const aiJudge = new AIJudgeService({
+      apiKey,
+      // Use default OpenAI settings
+    })
+    
+    const judgment = await aiJudge.judgeTemplate({
+      templateContent,
+      rubric,
+      expectedStructure,
+      templateType,
+      context
+    })
+    
+    console.log('Template judgment completed:', {
+      pass: judgment.pass,
+      totalScore: judgment.totalScore,
+      scores: judgment.scores
+    })
+    
+    return judgment
+  } catch (error: any) {
+    console.error('Failed to judge template:', error)
+    
+    // Return a structured error response that matches AIJudgment interface
+    return {
+      scores: rubric.keys.reduce((acc: any, key: string) => {
+        acc[key] = 0
+        return acc
+      }, {}),
+      feedback: `AI judging failed: ${error.message}. Please check your OpenAI API configuration and try again.`,
+      pass: false,
+      totalScore: 0
+    }
+  }
 })
 
 ipcMain.handle('get-settings', async () => {

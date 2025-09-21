@@ -43,10 +43,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getKataStats: (kataId: string) => ipcRenderer.invoke('get-kata-stats', kataId),
   
   // AI judging
-  judgeExplanation: (explanation: string, rubric: any) => 
-    ipcRenderer.invoke('judge-explanation', explanation, rubric),
-  judgeTemplate: (templateContent: string, rubric: any, expectedStructure: any) =>
-    ipcRenderer.invoke('judge-template', templateContent, rubric, expectedStructure),
+  judgeExplanation: (explanation: string, rubric: any, topic?: string, context?: string) => 
+    ipcRenderer.invoke('judge-explanation', explanation, rubric, topic, context),
+  judgeTemplate: (templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) =>
+    ipcRenderer.invoke('judge-template', templateContent, rubric, expectedStructure, templateType, context),
   
   // File operations
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
@@ -76,8 +76,8 @@ export interface ElectronAPI {
   getAttemptHistory: (kataId: string) => Promise<any[]>
   getAllProgress: () => Promise<any[]>
   getKataStats: (kataId: string) => Promise<any>
-  judgeExplanation: (explanation: string, rubric: any) => Promise<any>
-  judgeTemplate: (templateContent: string, rubric: any, expectedStructure: any) => Promise<any>
+  judgeExplanation: (explanation: string, rubric: any, topic?: string, context?: string) => Promise<any>
+  judgeTemplate: (templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) => Promise<any>
   openFileDialog: () => Promise<string[]>
   saveFileDialog: () => Promise<string>
   checkDependencies: () => Promise<any>
