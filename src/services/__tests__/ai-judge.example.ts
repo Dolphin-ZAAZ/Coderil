@@ -89,7 +89,7 @@ async function judgeTemplateExample() {
     keys: ['structure', 'completeness', 'best_practices', 'documentation', 'functionality'],
     threshold: {
       min_total: 75,
-      min_structure: 70
+      min_correctness: 70
     }
   }
 
@@ -205,11 +205,11 @@ async function errorHandlingExample() {
       rubric
     })
   } catch (error) {
-    console.log('Expected error caught:', error.message)
+    console.log('Expected error caught:', (error as Error).message)
     
     // The service provides structured error responses
     // that can be used to show user-friendly messages
-    if (error.retryable) {
+    if ((error as any).retryable) {
       console.log('This error is retryable - could try again later')
     } else {
       console.log('This error is not retryable - likely a configuration issue')

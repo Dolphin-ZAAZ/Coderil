@@ -6,8 +6,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "npm run build:dev && npm run dist",
     "build:dev": "tsc && vite build",
+    "build:prod": "cross-env NODE_ENV=production npm run build",
+    "build:platform": "node scripts/build.js",
+    "build:test": "node scripts/test-build.js",
+    "build:test-config": "node scripts/test-config.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "dist:all": "electron-builder --win --mac --linux",
+    "pack": "electron-builder --dir",
     "preview": "vite preview",
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -39,6 +49,7 @@
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "electron-rebuild": "^3.2.9",
@@ -68,22 +79,143 @@
   "build": {
     "appId": "com.codekata.app",
     "productName": "Code Kata App",
+    "copyright": "Copyright © 2025 Code Kata App",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/**/{CHANGELOG.md,README.md,readme.md,readme.txt,author,authors,contributors,copying,copyright,install,news,license,licence,notice,changes}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/*.d.ts",
+      "!node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      {
+        "from": "katas",
+        "to": "katas",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "kata-templates",
+        "to": "kata-templates",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "Code Kata App ${version}",
+      "icon": "build/icon.icns",
+      "background": "build/background.png",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "Code Kata App",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Code Kata App",
+      "include": "build/installer.nsh",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "linux": {
-      "target": "AppImage"
-    }
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "synopsis": "Desktop application for code katas with local execution and AI-powered judging",
+      "description": "Code Kata App is a comprehensive desktop environment for practicing coding challenges. It supports multiple programming languages (Python, JavaScript, TypeScript, C++), provides local code execution, AI-powered judging for explanations, and tracks your progress over time.",
+      "desktop": {
+        "Name": "Code Kata App",
+        "Comment": "Practice coding challenges with local execution",
+        "Keywords": "development;coding;practice;kata;programming;",
+        "StartupNotify": "true"
+      }
+    },
+    "appImage": {
+      "license": "LICENSE"
+    },
+    "deb": {
+      "priority": "optional",
+      "depends": ["python3", "nodejs"]
+    },
+    "rpm": {
+      "depends": ["python3", "nodejs"]
+    },
+    "publish": null
   }
 }

@@ -1,0 +1,4 @@
+# Placeholder for Windows ICO icon file
+# In a real implementation, this would be a multi-resolution ICO file containing:
+# - 16x16, 32x32, 48x48, 64x64, 128x128, 256x256 pixel versions
+# - Should represent the Code Kata App branding

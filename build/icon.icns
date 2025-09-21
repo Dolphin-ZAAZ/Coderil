@@ -1,0 +1,4 @@
+# Placeholder for macOS ICNS icon file
+# In a real implementation, this would be an ICNS file containing multiple resolutions:
+# - 16x16, 32x32, 64x64, 128x128, 256x256, 512x512, 1024x1024 pixel versions
+# - Should follow Apple's icon design guidelines

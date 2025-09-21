@@ -54,6 +54,19 @@ Before running the application, ensure you have the following installed:
 - `npm run build:dev` - Build for development (no packaging)
 - `npm run build` - Build and package for production
 
+### Distribution Commands
+- `npm run dist` - Package for current platform
+- `npm run dist:win` - Package for Windows (NSIS installer + portable)
+- `npm run dist:mac` - Package for macOS (DMG + ZIP)
+- `npm run dist:linux` - Package for Linux (AppImage + DEB + RPM)
+- `npm run dist:all` - Package for all platforms
+- `npm run pack` - Create unpacked directory (for testing)
+
+### Build Testing
+- `npm run build:test-config` - Test build configuration without packaging
+- `npm run build:test` - Full build test including packaging (requires build tools)
+- `npm run build:platform <platform>` - Build for specific platform using custom script
+
 ### Code Quality
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Run ESLint with auto-fix
@@ -324,6 +337,33 @@ See the `two-sum-example` kata for a complete reference implementation.
 - **Monaco Editor** v0.44+ - VS Code editor component for code editing (to be integrated)
 - **SQLite** - Local database for progress tracking via better-sqlite3
 - **Node.js** v18+ - Required for development and JS/TS kata execution
+
+## Building and Distribution
+
+The application is configured for cross-platform distribution with electron-builder. See [BUILD.md](BUILD.md) for comprehensive build instructions.
+
+### Quick Build Guide
+
+1. **Install dependencies**: `npm install`
+2. **Test configuration**: `npm run build:test-config`
+3. **Build for development**: `npm run build:dev`
+4. **Package for distribution**: `npm run dist`
+
+### Platform Requirements
+
+- **Windows**: Visual Studio Build Tools with C++ workload (for native dependencies)
+- **macOS**: Xcode Command Line Tools
+- **Linux**: Standard build tools (`build-essential` on Ubuntu)
+
+For detailed troubleshooting and alternative approaches, see [NATIVE_DEPENDENCIES.md](NATIVE_DEPENDENCIES.md).
+
+### Distribution Formats
+
+- **Windows**: NSIS installer (.exe) and portable executable
+- **macOS**: DMG disk image and ZIP archive (universal binaries for Intel/Apple Silicon)
+- **Linux**: AppImage, DEB package, and RPM package
+
+Built applications are output to the `release/` directory and include all necessary runtime dependencies.
 
 ## License
 
