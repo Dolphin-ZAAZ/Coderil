@@ -293,6 +293,471 @@ def calculate(a, b):
     })
   })
 
+  describe('JavaScript execution', () => {
+    it('should execute JavaScript code with passing tests', async () => {
+      // Create test files
+      const testCode = `
+const { addNumbers } = require('./entry.js');
+
+function test_addition() {
+    console.log('Testing addition...');
+    const result = addNumbers(2, 3);
+    if (result !== 5) {
+        throw new Error(\`Expected 5, got \${result}\`);
+    }
+    console.log('Addition test passed!');
+}
+
+function test_negative_numbers() {
+    console.log('Testing negative numbers...');
+    const result = addNumbers(-1, 1);
+    if (result !== 0) {
+        throw new Error(\`Expected 0, got \${result}\`);
+    }
+    console.log('Negative numbers test passed!');
+}
+
+if (require.main === module) {
+    try {
+        test_addition();
+        test_negative_numbers();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function addNumbers(a, b) {
+    return a + b;
+}
+
+module.exports = { addNumbers };
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.js'), testCode)
+
+      // Execute the code
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.output).toContain('All public tests passed!')
+      expect(result.testResults).toHaveLength(2)
+      expect(result.testResults.every(t => t.passed)).toBe(true)
+      expect(result.score).toBe(100)
+      expect(result.duration).toBeGreaterThan(0)
+    })
+
+    it('should handle JavaScript code with failing tests', async () => {
+      const testCode = `
+const { multiply } = require('./entry.js');
+
+function test_multiplication() {
+    console.log('Testing multiplication...');
+    const result = multiply(3, 4);
+    if (result !== 12) {
+        throw new Error(\`Expected 12, got \${result}\`);
+    }
+    console.log('Multiplication test passed!');
+}
+
+function test_zero_multiplication() {
+    console.log('Testing zero multiplication...');
+    const result = multiply(5, 0);
+    if (result !== 0) {
+        throw new Error(\`Expected 0, got \${result}\`);
+    }
+    console.log('Zero multiplication test passed!');
+}
+
+if (require.main === module) {
+    try {
+        test_multiplication();
+        test_zero_multiplication();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function multiply(a, b) {
+    // Bug: should be a * b
+    return a + b;
+}
+
+module.exports = { multiply };
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.js'), testCode)
+
+      // Execute the code
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.testResults.length).toBeGreaterThan(0)
+      expect(result.testResults.some(t => !t.passed)).toBe(true)
+      expect(result.score).toBeLessThan(100)
+    })
+
+    it('should handle syntax errors in JavaScript code', async () => {
+      const testCode = `
+const { brokenFunction } = require('./entry.js');
+
+function test_function() {
+    console.log('Testing function...');
+    const result = brokenFunction();
+    if (result !== 'hello') {
+        throw new Error(\`Expected 'hello', got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_function();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function brokenFunction() {
+    return "hello"
+    // Missing closing brace and other syntax issues
+    console.log("this is broken syntax
+}
+
+module.exports = { brokenFunction };
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.js'), testCode)
+
+      // Execute the code
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toMatch(/SyntaxError|Error/)
+    })
+
+    it('should handle timeout for infinite loops', async () => {
+      const testCode = `
+const { infiniteLoop } = require('./entry.js');
+
+function test_timeout() {
+    console.log('Testing timeout...');
+    infiniteLoop();
+}
+
+if (require.main === module) {
+    try {
+        test_timeout();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function infiniteLoop() {
+    while (true) {
+        // Infinite loop
+    }
+}
+
+module.exports = { infiniteLoop };
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.js'), testCode)
+
+      // Execute with short timeout
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        1000 // 1 second timeout
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContain('timed out')
+    }, 10000) // Give the test itself more time
+
+    it('should handle missing test file', async () => {
+      const userCode = `
+function simpleFunction() {
+    return "hello";
+}
+
+module.exports = { simpleFunction };
+`
+
+      // Don't create the test file
+
+      // Execute the code
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContain('Test file not found')
+    })
+
+    it('should execute hidden tests when requested', async () => {
+      const publicTestCode = `
+const { calculate } = require('./entry.js');
+
+function test_basic() {
+    console.log('Testing basic...');
+    const result = calculate(1, 2);
+    if (result !== 3) {
+        throw new Error(\`Expected 3, got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_basic();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const hiddenTestCode = `
+const { calculate } = require('./entry.js');
+
+function test_advanced() {
+    console.log('Testing advanced...');
+    const result = calculate(10, 20);
+    if (result !== 30) {
+        throw new Error(\`Expected 30, got \${result}\`);
+    }
+}
+
+function test_edge_case() {
+    console.log('Testing edge case...');
+    const result = calculate(0, 0);
+    if (result !== 0) {
+        throw new Error(\`Expected 0, got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_advanced();
+        test_edge_case();
+        console.log('All hidden tests passed!');
+    } catch (error) {
+        console.error('Hidden test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function calculate(a, b) {
+    return a + b;
+}
+
+module.exports = { calculate };
+`
+
+      // Write both test files
+      writeFileSync(join(testKataPath, 'tests.js'), publicTestCode)
+      writeFileSync(join(testKataPath, 'hidden_tests.js'), hiddenTestCode)
+
+      // Execute hidden tests
+      const result = await executionService.executeJavaScript(
+        userCode,
+        'hidden_tests.js',
+        testKataPath,
+        true, // hidden = true
+        5000
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.output).toContain('All hidden tests passed!')
+      expect(result.testResults).toHaveLength(2)
+      expect(result.score).toBe(100)
+    })
+  })
+
+  describe('TypeScript execution', () => {
+    it('should execute TypeScript code with passing tests', async () => {
+      // Create test files
+      const testCode = `
+import { addNumbers } from './entry';
+
+function test_addition(): void {
+    console.log('Testing addition...');
+    const result: number = addNumbers(2, 3);
+    if (result !== 5) {
+        throw new Error(\`Expected 5, got \${result}\`);
+    }
+    console.log('Addition test passed!');
+}
+
+function test_negative_numbers(): void {
+    console.log('Testing negative numbers...');
+    const result: number = addNumbers(-1, 1);
+    if (result !== 0) {
+        throw new Error(\`Expected 0, got \${result}\`);
+    }
+    console.log('Negative numbers test passed!');
+}
+
+if (require.main === module) {
+    try {
+        test_addition();
+        test_negative_numbers();
+        console.log('All public tests passed!');
+    } catch (error: any) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+export function addNumbers(a: number, b: number): number {
+    return a + b;
+}
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.ts'), testCode)
+
+      // Execute the code
+      const result = await executionService.executeTypeScript(
+        userCode,
+        'tests.ts',
+        testKataPath,
+        false,
+        10000 // Longer timeout for compilation
+      )
+
+      // In test environment, TypeScript compiler may not be available
+      if (result.errors.includes('TypeScript compiler not available')) {
+        expect(result.success).toBe(false)
+        expect(result.errors).toContain('TypeScript compiler not available')
+        expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+      } else {
+        expect(result.success).toBe(true)
+        expect(result.output).toContain('All public tests passed!')
+        expect(result.testResults).toHaveLength(2)
+        expect(result.testResults.every(t => t.passed)).toBe(true)
+        expect(result.score).toBe(100)
+        expect(result.duration).toBeGreaterThan(0)
+      }
+    }, 15000) // Give the test more time for TypeScript compilation
+
+    it('should handle TypeScript compilation errors', async () => {
+      const testCode = `
+import { brokenFunction } from './entry';
+
+function test_function(): void {
+    console.log('Testing function...');
+    const result: string = brokenFunction();
+    if (result !== 'hello') {
+        throw new Error(\`Expected 'hello', got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_function();
+        console.log('All public tests passed!');
+    } catch (error: any) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+export function brokenFunction(): string {
+    // Type error: returning number instead of string
+    return 42;
+}
+`
+
+      // Write test file
+      writeFileSync(join(testKataPath, 'tests.ts'), testCode)
+
+      // Execute the code
+      const result = await executionService.executeTypeScript(
+        userCode,
+        'tests.ts',
+        testKataPath,
+        false,
+        10000
+      )
+
+      expect(result.success).toBe(false)
+      // Should either fail due to compilation error or missing TypeScript compiler
+      expect(result.testResults.some(t => t.name === 'compilation' && !t.passed)).toBe(true)
+    }, 15000)
+
+    it('should handle missing TypeScript test file', async () => {
+      const userCode = `
+export function simpleFunction(): string {
+    return "hello";
+}
+`
+
+      // Don't create the test file
+
+      // Execute the code
+      const result = await executionService.executeTypeScript(
+        userCode,
+        'tests.ts',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContain('Test file not found')
+    })
+  })
+
   describe('executeCode method', () => {
     it('should route Python execution correctly', async () => {
       const testCode = `
@@ -331,11 +796,107 @@ def simple_func():
       expect(result.score).toBe(100)
     })
 
-    it('should return not implemented for unsupported languages', async () => {
+    it('should route JavaScript execution correctly', async () => {
+      const testCode = `
+const { simpleFunc } = require('./entry.js');
+
+function test_simple() {
+    console.log('Testing simple function...');
+    const result = simpleFunc();
+    if (result !== 'test') {
+        throw new Error(\`Expected 'test', got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_simple();
+        console.log('All public tests passed!');
+    } catch (error) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+function simpleFunc() {
+    return "test";
+}
+
+module.exports = { simpleFunc };
+`
+
+      writeFileSync(join(testKataPath, 'tests.js'), testCode)
+
       const result = await executionService.executeCode(
         'js',
-        'console.log("test")',
-        'test.js',
+        userCode,
+        'tests.js',
+        testKataPath,
+        false,
+        5000
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.score).toBe(100)
+    })
+
+    it('should route TypeScript execution correctly', async () => {
+      const testCode = `
+import { simpleFunc } from './entry';
+
+function test_simple(): void {
+    console.log('Testing simple function...');
+    const result: string = simpleFunc();
+    if (result !== 'test') {
+        throw new Error(\`Expected 'test', got \${result}\`);
+    }
+}
+
+if (require.main === module) {
+    try {
+        test_simple();
+        console.log('All public tests passed!');
+    } catch (error: any) {
+        console.error('Test failed:', error.message);
+        process.exit(1);
+    }
+}
+`
+
+      const userCode = `
+export function simpleFunc(): string {
+    return "test";
+}
+`
+
+      writeFileSync(join(testKataPath, 'tests.ts'), testCode)
+
+      const result = await executionService.executeCode(
+        'ts',
+        userCode,
+        'tests.ts',
+        testKataPath,
+        false,
+        10000
+      )
+
+      // In test environment, TypeScript compiler may not be available
+      if (result.errors.includes('TypeScript compiler not available')) {
+        expect(result.success).toBe(false)
+        expect(result.errors).toContain('TypeScript compiler not available')
+      } else {
+        expect(result.success).toBe(true)
+        expect(result.score).toBe(100)
+      }
+    }, 15000)
+
+    it('should return not implemented for unsupported languages', async () => {
+      const result = await executionService.executeCode(
+        'cpp',
+        'int main() { return 0; }',
+        'test.cpp',
         testKataPath,
         false,
         5000
