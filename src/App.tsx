@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
 import { ScoringService } from '@/services/scoring'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import './App.css'
 
 function App() {
@@ -14,10 +15,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
-  const [progressKey, setProgressKey] = useState(0) // Key to trigger progress refresh
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const scoringService = ScoringService.getInstance()
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  const isTablet = useMediaQuery('(max-width: 1200px)')
 
   useEffect(() => {
     // Load katas and settings on app start
@@ -233,8 +236,7 @@ function App() {
             code: currentCode
           })
           
-          // Refresh progress display
-          setProgressKey(prev => prev + 1)
+          // Progress display will refresh automatically
           
           // Handle auto-continue if enabled and kata passed
           if (autoContinueEnabled && aiJudgment.pass) {
@@ -279,8 +281,7 @@ function App() {
             code: currentCode
           })
           
-          // Refresh progress display
-          setProgressKey(prev => prev + 1)
+          // Progress display will refresh automatically
           
           // Handle auto-continue if enabled and kata passed
           if (autoContinueEnabled && aiJudgment.pass) {
@@ -402,39 +403,105 @@ function App() {
         <div className="kata-workspace">
           {selectedKata && kataDetails ? (
             <div className="workspace-panels">
-              <div className="statement-panel-container">
-                <StatementPanel 
-                  statement={kataDetails.statement}
-                  metadata={kataDetails.metadata}
-                  solutionCode={kataDetails.solutionCode}
-                  onShowSolution={() => console.log('Solution viewed for kata:', selectedKata.slug)}
-                />
-              </div>
-              
-              <div className="code-editor-panel-container">
-                <CodeEditorPanel
-                  language={kataDetails.language}
-                  initialCode={currentCode}
-                  onChange={handleCodeChange}
-                  onRun={handleRun}
-                  onSubmit={handleSubmit}
-                  kataId={selectedKata.slug}
-                />
-              </div>
-              
-              <div className="results-panel-container">
-                <ProgressDisplay 
-                  kataId={selectedKata.slug}
-                  onReset={handleReset}
-                  showResetButton={true}
-                />
-                <ResultsPanel
-                  results={executionResults}
-                  aiJudgment={aiJudgment}
-                  isLoading={isExecuting}
-                  onReset={handleReset}
-                />
-              </div>
+              {isTablet ? (
+                // Vertical layout for tablet and mobile
+                <>
+                  <ResizablePanel
+                    direction="vertical"
+                    initialSize={isMobile ? 200 : 250}
+                    minSize={150}
+                    maxSize={400}
+                    className="statement-panel-container"
+                  >
+                    <StatementPanel 
+                      statement={kataDetails.statement}
+                      metadata={kataDetails.metadata}
+                      solutionCode={kataDetails.solutionCode}
+                      onShowSolution={() => console.log('Solution viewed for kata:', selectedKata.slug)}
+                    />
+                  </ResizablePanel>
+                  
+                  <ResizablePanel
+                    direction="vertical"
+                    initialSize={isMobile ? 300 : 350}
+                    minSize={200}
+                    maxSize={500}
+                    className="code-editor-panel-container"
+                  >
+                    <CodeEditorPanel
+                      language={kataDetails.language}
+                      initialCode={currentCode}
+                      onChange={handleCodeChange}
+                      onRun={handleRun}
+                      onSubmit={handleSubmit}
+                      kataId={selectedKata.slug}
+                    />
+                  </ResizablePanel>
+                  
+                  <div className="results-panel-container">
+                    <ProgressDisplay 
+                      kataId={selectedKata.slug}
+                      onReset={handleReset}
+                      showResetButton={true}
+                    />
+                    <ResultsPanel
+                      results={executionResults}
+                      aiJudgment={aiJudgment}
+                      isLoading={isExecuting}
+                      onReset={handleReset}
+                    />
+                  </div>
+                </>
+              ) : (
+                // Horizontal layout for desktop
+                <>
+                  <ResizablePanel
+                    direction="horizontal"
+                    initialSize={300}
+                    minSize={200}
+                    maxSize={600}
+                    className="statement-panel-container"
+                  >
+                    <StatementPanel 
+                      statement={kataDetails.statement}
+                      metadata={kataDetails.metadata}
+                      solutionCode={kataDetails.solutionCode}
+                      onShowSolution={() => console.log('Solution viewed for kata:', selectedKata.slug)}
+                    />
+                  </ResizablePanel>
+                  
+                  <ResizablePanel
+                    direction="horizontal"
+                    initialSize={600}
+                    minSize={400}
+                    maxSize={1000}
+                    className="code-editor-panel-container"
+                  >
+                    <CodeEditorPanel
+                      language={kataDetails.language}
+                      initialCode={currentCode}
+                      onChange={handleCodeChange}
+                      onRun={handleRun}
+                      onSubmit={handleSubmit}
+                      kataId={selectedKata.slug}
+                    />
+                  </ResizablePanel>
+                  
+                  <div className="results-panel-container">
+                    <ProgressDisplay 
+                      kataId={selectedKata.slug}
+                      onReset={handleReset}
+                      showResetButton={true}
+                    />
+                    <ResultsPanel
+                      results={executionResults}
+                      aiJudgment={aiJudgment}
+                      isLoading={isExecuting}
+                      onReset={handleReset}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="workspace-placeholder">

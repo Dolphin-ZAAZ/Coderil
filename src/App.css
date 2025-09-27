@@ -134,17 +134,15 @@
 
 .workspace-panels {
   height: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr;
+  display: flex;
   gap: 0;
 }
 
-.statement-panel-container,
-.code-editor-panel-container,
 .results-panel-container {
+  flex: 1;
   height: 100%;
   overflow: hidden;
+  min-width: 200px;
 }
 
 .workspace-placeholder {
@@ -170,22 +168,12 @@
 /* Responsive layout for smaller screens */
 @media (max-width: 1200px) {
   .workspace-panels {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-  
-  .statement-panel-container {
-    grid-column: 1 / -1;
-  }
-  
-  .code-editor-panel-container {
-    grid-column: 1;
-    grid-row: 2;
+    flex-direction: column;
   }
   
   .results-panel-container {
-    grid-column: 2;
-    grid-row: 2;
+    flex: 1;
+    min-height: 150px;
   }
 }
 
@@ -207,28 +195,12 @@
   }
   
   .workspace-panels {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
-  }
-  
-  .statement-panel-container,
-  .code-editor-panel-container,
-  .results-panel-container {
-    grid-column: 1;
-  }
-  
-  .statement-panel-container {
-    grid-row: 1;
-    height: 200px;
-  }
-  
-  .code-editor-panel-container {
-    grid-row: 2;
+    flex-direction: column;
   }
   
   .results-panel-container {
-    grid-row: 3;
-    height: 200px;
+    flex: 1;
+    min-height: 150px;
   }
 }
 
@@ -262,8 +234,6 @@
     background: #212529;
   }
 
-
-
   .kata-selector-container {
     background-color: #f8f9fa;
   }
@@ -279,4 +249,6 @@
   .workspace-placeholder p {
     color: #6c757d;
   }
+
+
 }
