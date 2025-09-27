@@ -12,10 +12,38 @@
   background-color: #2a2a2a;
 }
 
+.statement-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .statement-header h2 {
-  margin: 0 0 0.5rem 0;
+  margin: 0;
   color: #fff;
   font-size: 1.2rem;
+}
+
+.btn-solution {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #6366f1;
+  background-color: transparent;
+  color: #6366f1;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-solution:hover {
+  background-color: #6366f1;
+  color: #fff;
+}
+
+.btn-solution.active {
+  background-color: #6366f1;
+  color: #fff;
 }
 
 .statement-meta {
@@ -219,5 +247,81 @@
 
   .statement-markdown th {
     background-color: #f8f9fa;
+  }
+
+  .btn-solution {
+    border-color: #6366f1;
+    color: #6366f1;
+  }
+
+  .btn-solution:hover,
+  .btn-solution.active {
+    background-color: #6366f1;
+    color: #fff;
+  }
+}
+
+.solution-section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #444;
+}
+
+.solution-section h3 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.solution-code {
+  background-color: #2d3748;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0;
+  margin: 0;
+  overflow-x: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.solution-code code {
+  background: none;
+  padding: 1rem;
+  display: block;
+  color: #e2e8f0;
+}
+
+/* Override highlight.js theme for better integration */
+.solution-code code.hljs {
+  background: none;
+  padding: 1rem;
+}
+
+.solution-code .hljs {
+  background: none;
+}
+
+@media (prefers-color-scheme: light) {
+  .solution-section {
+    border-top-color: #e9ecef;
+  }
+
+  .solution-section h3 {
+    color: #212529;
+  }
+
+  .solution-code {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+  }
+
+  .solution-code code {
+    color: #495057;
+  }
+
+  /* Light theme overrides for highlight.js */
+  .solution-code code.hljs {
+    color: #495057;
   }
 }

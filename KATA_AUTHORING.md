@@ -58,6 +58,7 @@ katas/
     ├── meta.yaml          # Required: Kata metadata and configuration
     ├── statement.md       # Required: Problem description
     ├── entry.py           # Required: Starter code file
+    ├── solution.py        # Optional: Reference solution (recommended)
     ├── tests.py           # Required for code katas: Public test cases
     ├── hidden_tests.py    # Optional: Hidden test cases for final evaluation
     └── rubric.yaml        # Required for explanation/template katas: AI evaluation criteria
@@ -83,6 +84,7 @@ type: "code"                        # Type: code, explain, template
 difficulty: "easy"                  # Difficulty: easy, medium, hard
 tags: ["arrays", "algorithms"]      # Searchable tags
 entry: "entry.py"                   # Starter code filename
+solution: "solution.py"             # Optional: Reference solution filename
 test:
   kind: "programmatic"              # Test type: programmatic, io, none
   file: "tests.py"                  # Test file name
@@ -92,6 +94,7 @@ timeout_ms: 5000                    # Execution timeout in milliseconds
 ### Optional Fields
 
 ```yaml
+solution: "solution.py"             # Reference solution file
 description: "Short description"    # Brief kata summary
 author: "Your Name"                 # Kata author
 created: "2024-01-15"              # Creation date
@@ -181,6 +184,54 @@ Additional helpful information or clarifications.
 3. **Define Constraints**: Specify input limits and edge cases
 4. **Use Formatting**: Code blocks, lists, and headers for readability
 5. **Include Context**: Explain why this problem is useful to solve
+
+## Solution Files
+
+All katas should include a reference solution that demonstrates the expected implementation. This solution is displayed to users via a "Show Solution" button in the UI.
+
+### Solution File Guidelines
+
+1. **File Naming**: Use `solution.{ext}` where `{ext}` matches the kata language
+2. **Complete Implementation**: Provide a fully working solution that passes all tests
+3. **Best Practices**: Demonstrate optimal or recommended approaches
+4. **Documentation**: Include comments explaining the approach and complexity
+5. **Consistency**: Match the function signature and style of the starter code
+
+### Example Solution Structure
+
+```python
+def two_sum(nums, target):
+    """
+    Find two numbers in the array that add up to the target.
+    
+    Time Complexity: O(n)
+    Space Complexity: O(n)
+    
+    Args:
+        nums: List of integers
+        target: Target sum
+        
+    Returns:
+        List of two indices whose values add up to target
+    """
+    # Hash map approach for optimal performance
+    num_map = {}
+    
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in num_map:
+            return [num_map[complement], i]
+        num_map[num] = i
+    
+    return []  # Should not reach here if valid solution exists
+```
+
+### Solution Display
+
+- Solutions are accessible via a "Show Solution" button in the statement panel
+- No restrictions are placed on when users can view solutions
+- Solutions help users learn different approaches and best practices
+- Consider providing multiple solution approaches for complex problems
 
 ## Creating Code Katas
 
@@ -623,6 +674,26 @@ def your_function(param):
         Return value description
     """
     # Write your solution here
+    pass
+EOF
+
+# Create solution.py
+cat > solution.py << 'EOF'
+def your_function(param):
+    """
+    Function description.
+    
+    Time Complexity: O(?)
+    Space Complexity: O(?)
+    
+    Args:
+        param: Parameter description
+        
+    Returns:
+        Return value description
+    """
+    # Reference solution implementation
+    # TODO: Implement your solution here
     pass
 EOF
 

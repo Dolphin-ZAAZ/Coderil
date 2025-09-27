@@ -25,6 +25,7 @@ export interface KataMetadata {
   entry: string
   test: TestMetadata
   timeout_ms: number
+  solution?: string // Optional solution file path
 }
 
 export interface TestMetadata {
@@ -38,6 +39,7 @@ export interface KataDetails extends Kata {
   starterCode: string
   testConfig: TestConfig
   rubric?: Rubric
+  solutionCode?: string // Optional solution code
 }
 
 export interface TestConfig {
@@ -353,6 +355,8 @@ export interface KataSelectorProps {
 export interface StatementPanelProps {
   statement: string
   metadata: KataMetadata
+  solutionCode?: string
+  onShowSolution?: () => void
 }
 
 export interface CodeEditorProps {

@@ -133,7 +133,11 @@ describe('KataManagerService', () => {
                 path: path.join(testKatasDir, 'test-kata')
             }]);
 
-            mockFs.existsSync.mockReturnValue(true);
+            mockFs.existsSync.mockImplementation((filePath: fs.PathLike) => {
+                const pathStr = filePath.toString();
+                // Only return true for files that actually exist in this test
+                return pathStr.endsWith('meta.yaml') || pathStr.endsWith('statement.md') || pathStr.endsWith('main.py');
+            });
             mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
             mockFs.readFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
                 const pathStr = filePath.toString();
@@ -161,10 +165,10 @@ describe('KataManagerService', () => {
                 testConfig: {
                     kind: 'programmatic',
                     publicTestFile: 'test.py',
-                    timeoutMs: 5000,
-                    hiddenTestFile: 'hidden_test.py'
+                    timeoutMs: 5000
                 },
-                rubric: undefined
+                rubric: undefined,
+                solutionCode: undefined
             });
         });
 
@@ -219,6 +223,53 @@ describe('KataManagerService', () => {
                 keys: ['correctness', 'clarity'],
                 threshold: { min_total: 70, min_correctness: 60 }
             });
+        });
+
+        it('should load solution code when available', async () => {
+            const mockMetadata: KataMetadata = {
+                slug: 'test-kata',
+                title: 'Test Kata',
+                language: 'py',
+                type: 'code',
+                difficulty: 'easy',
+                tags: ['test'],
+                entry: 'main.py',
+                solution: 'solution.py',
+                test: { kind: 'programmatic', file: 'test.py' },
+                timeout_ms: 5000
+            };
+
+            vi.spyOn(service, 'loadKatas').mockResolvedValue([{
+                slug: 'test-kata',
+                title: 'Test Kata',
+                language: 'py',
+                type: 'code',
+                difficulty: 'easy',
+                tags: ['test'],
+                path: path.join(testKatasDir, 'test-kata')
+            }]);
+
+            mockFs.existsSync.mockImplementation((filePath: fs.PathLike) => {
+                const pathStr = filePath.toString();
+                return pathStr.endsWith('solution.py') || pathStr.endsWith('meta.yaml') || 
+                       pathStr.endsWith('statement.md') || pathStr.endsWith('main.py');
+            });
+
+            mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
+            mockFs.readFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+                const pathStr = filePath.toString();
+                if (pathStr.endsWith('meta.yaml')) return 'slug: test-kata';
+                if (pathStr.endsWith('statement.md')) return '# Test Kata\nThis is a test kata.';
+                if (pathStr.endsWith('main.py')) return 'def solution():\n    pass';
+                if (pathStr.endsWith('solution.py')) return 'def solution():\n    return "solved"';
+                return '';
+            });
+
+            mockYaml.load.mockReturnValue(mockMetadata);
+
+            const result = await service.loadKata('test-kata');
+
+            expect(result.solutionCode).toBe('def solution():\n    return "solved"');
         });
 
         it('should handle template katas with directory entry', async () => {

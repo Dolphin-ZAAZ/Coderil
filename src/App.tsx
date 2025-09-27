@@ -390,6 +390,8 @@ function App() {
                 <StatementPanel 
                   statement={kataDetails.statement}
                   metadata={kataDetails.metadata}
+                  solutionCode={kataDetails.solutionCode}
+                  onShowSolution={() => console.log('Solution viewed for kata:', selectedKata.slug)}
                 />
               </div>
               

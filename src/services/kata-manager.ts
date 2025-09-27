@@ -122,6 +122,7 @@ export class KataManagerService {
       const starterCode = await this.loadStarterCode(kata.path, metadata.entry);
       const testConfig = this.createTestConfig(metadata);
       const rubric = await this.loadRubric(kata.path, metadata);
+      const solutionCode = await this.loadSolutionCode(kata.path, metadata);
 
       return {
         ...kata,
@@ -129,7 +130,8 @@ export class KataManagerService {
         metadata,
         starterCode,
         testConfig,
-        rubric
+        rubric,
+        solutionCode
       };
     } catch (error) {
       const fsError = new Error(`Failed to load kata details for ${slug}: ${error}`) as FileSystemError;
@@ -271,6 +273,57 @@ export class KataManagerService {
     }
 
     return testConfig;
+  }
+
+  /**
+   * Loads solution code if available
+   */
+  private async loadSolutionCode(kataPath: string, metadata: KataMetadata): Promise<string | undefined> {
+    // Check if solution file is specified in metadata
+    if (metadata.solution) {
+      const solutionPath = path.join(kataPath, metadata.solution);
+      if (fs.existsSync(solutionPath)) {
+        try {
+          return fs.readFileSync(solutionPath, 'utf8');
+        } catch (error) {
+          console.warn(`Failed to read solution file ${solutionPath}:`, error);
+        }
+      }
+    }
+
+    // Try common solution file patterns
+    const solutionPatterns = [
+      'solution.' + this.getFileExtension(metadata.language),
+      'answer.' + this.getFileExtension(metadata.language),
+      'reference.' + this.getFileExtension(metadata.language),
+      'solution_' + metadata.slug + '.' + this.getFileExtension(metadata.language)
+    ];
+
+    for (const pattern of solutionPatterns) {
+      const solutionPath = path.join(kataPath, pattern);
+      if (fs.existsSync(solutionPath)) {
+        try {
+          return fs.readFileSync(solutionPath, 'utf8');
+        } catch (error) {
+          console.warn(`Failed to read solution file ${solutionPath}:`, error);
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Gets file extension for a language
+   */
+  private getFileExtension(language: string): string {
+    switch (language) {
+      case 'py': return 'py';
+      case 'js': return 'js';
+      case 'ts': return 'ts';
+      case 'cpp': return 'cpp';
+      default: return 'txt';
+    }
   }
 
   /**
