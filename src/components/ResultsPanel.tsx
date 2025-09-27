@@ -2,9 +2,15 @@ import { ResultsPanelProps, CombinedExecutionResult } from '@/types'
 import { ScoringService } from '@/services/scoring'
 import './ResultsPanel.css'
 
-export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelProps) {
+export function ResultsPanel({ results, aiJudgment, isLoading, onReset }: ResultsPanelProps) {
   const scoringService = ScoringService.getInstance()
   const isCombinedResult = results && 'finalScore' in results && 'passed' in results
+  
+  // Check if the kata was successfully completed
+  const isSuccessfulSubmission = (
+    (isCombinedResult && (results as CombinedExecutionResult).passed) ||
+    (aiJudgment && aiJudgment.pass)
+  )
   if (isLoading) {
     return (
       <div className="results-panel">
@@ -129,6 +135,22 @@ export function ResultsPanel({ results, aiJudgment, isLoading }: ResultsPanelPro
             <div className="execution-info">
               <span>Duration: {results.duration}ms</span>
             </div>
+          </div>
+        )}
+
+        {isSuccessfulSubmission && onReset && (
+          <div className="success-actions">
+            <div className="success-message">
+              <span className="success-icon">🎉</span>
+              <span>Congratulations! You've completed this kata successfully!</span>
+            </div>
+            <button 
+              onClick={onReset}
+              className="reset-button"
+              title="Reset and try again"
+            >
+              Reset & Try Again
+            </button>
           </div>
         )}
 

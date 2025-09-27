@@ -361,12 +361,14 @@ export interface CodeEditorProps {
   onChange: (code: string) => void
   onRun: () => void
   onSubmit: () => void
+  kataId?: string
 }
 
 export interface ResultsPanelProps {
   results: ExecutionResult | null
   aiJudgment: AIJudgment | null
   isLoading: boolean
+  onReset?: () => void
 }
 
 export interface ScoringConfig {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay } from '@/components'
 import { ScoringService } from '@/services/scoring'
 import './App.css'
 
@@ -14,6 +14,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
+  const [progressKey, setProgressKey] = useState(0) // Key to trigger progress refresh
   
   const scoringService = ScoringService.getInstance()
 
@@ -133,7 +134,29 @@ function App() {
 
   const handleCodeChange = (code: string) => {
     setCurrentCode(code)
-    // Auto-save will be implemented in later tasks
+    // Auto-save is now handled by CodeEditorPanel
+  }
+
+  const handleReset = async () => {
+    if (!selectedKata || !kataDetails) return
+    
+    try {
+      // Clear current results
+      setExecutionResults(null)
+      setAiJudgment(null)
+      
+      // Reset to starter code
+      setCurrentCode(kataDetails.starterCode)
+      
+      // Save starter code to database (instead of clearing)
+      if (window.electronAPI) {
+        await window.electronAPI.saveCode(selectedKata.slug, kataDetails.starterCode)
+      }
+      
+      console.log('Kata reset successfully')
+    } catch (error) {
+      console.error('Failed to reset kata:', error)
+    }
   }
 
   const handleRun = async () => {
@@ -185,29 +208,96 @@ function App() {
       await window.electronAPI.saveCode(selectedKata.slug, currentCode)
       
       if (kataDetails.type === 'explain') {
-        // AI judging for explanation katas (placeholder - will be implemented in task 13)
-        const mockAiJudgment: AIJudgment = {
-          scores: { clarity: 80, correctness: 70, completeness: 60 },
-          feedback: 'AI judging not implemented yet. This is a placeholder response.',
-          pass: false,
-          totalScore: 70
+        // AI judging for explanation katas
+        if (kataDetails.rubric) {
+          const aiJudgment = await window.electronAPI.judgeExplanation(
+            currentCode,
+            kataDetails.rubric,
+            kataDetails.title,
+            kataDetails.statement
+          )
+          
+          // Process AI judgment through scoring service
+          const processedJudgment = scoringService.processAIJudgment(aiJudgment)
+          setAiJudgment(processedJudgment)
+          
+          // Save attempt to database
+          await window.electronAPI.saveAttempt({
+            kataId: selectedKata.slug,
+            timestamp: new Date().toISOString(),
+            language: kataDetails.language,
+            status: aiJudgment.pass ? 'passed' : 'failed',
+            score: aiJudgment.totalScore,
+            durationMs: 0, // AI judging doesn't have execution time
+            code: currentCode
+          })
+          
+          // Refresh progress display
+          setProgressKey(prev => prev + 1)
+          
+          // Handle auto-continue if enabled and kata passed
+          if (autoContinueEnabled && aiJudgment.pass) {
+            // TODO: Implement auto-continue in task 20
+            console.log('Auto-continue would trigger here')
+          }
+        } else {
+          // Fallback for katas without rubric
+          const mockAiJudgment: AIJudgment = {
+            scores: { clarity: 80, correctness: 70, completeness: 60 },
+            feedback: 'No rubric found for this explanation kata.',
+            pass: false,
+            totalScore: 70
+          }
+          
+          const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
+          setAiJudgment(processedJudgment)
         }
-        
-        // Process AI judgment through scoring service
-        const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
-        setAiJudgment(processedJudgment)
       } else if (kataDetails.type === 'template') {
-        // AI judging for template katas (placeholder - will be implemented in task 13.1)
-        const mockAiJudgment: AIJudgment = {
-          scores: { structure: 75, completeness: 80, best_practices: 70 },
-          feedback: 'Template judging not implemented yet. This is a placeholder response.',
-          pass: false,
-          totalScore: 75
+        // AI judging for template katas
+        if (kataDetails.rubric) {
+          const aiJudgment = await window.electronAPI.judgeTemplate(
+            currentCode,
+            kataDetails.rubric,
+            undefined, // expectedStructure - could be added to kata metadata
+            kataDetails.title,
+            kataDetails.statement
+          )
+          
+          // Process AI judgment through scoring service
+          const processedJudgment = scoringService.processAIJudgment(aiJudgment)
+          setAiJudgment(processedJudgment)
+          
+          // Save attempt to database
+          await window.electronAPI.saveAttempt({
+            kataId: selectedKata.slug,
+            timestamp: new Date().toISOString(),
+            language: kataDetails.language,
+            status: aiJudgment.pass ? 'passed' : 'failed',
+            score: aiJudgment.totalScore,
+            durationMs: 0, // AI judging doesn't have execution time
+            code: currentCode
+          })
+          
+          // Refresh progress display
+          setProgressKey(prev => prev + 1)
+          
+          // Handle auto-continue if enabled and kata passed
+          if (autoContinueEnabled && aiJudgment.pass) {
+            // TODO: Implement auto-continue in task 20
+            console.log('Auto-continue would trigger here')
+          }
+        } else {
+          // Fallback for katas without rubric
+          const mockAiJudgment: AIJudgment = {
+            scores: { structure: 75, completeness: 80, best_practices: 70 },
+            feedback: 'No rubric found for this template kata.',
+            pass: false,
+            totalScore: 75
+          }
+          
+          const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
+          setAiJudgment(processedJudgment)
         }
-        
-        // Process AI judgment through scoring service
-        const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
-        setAiJudgment(processedJudgment)
       } else {
         // Code execution for code katas - run both public and hidden tests
         const publicResult = await window.electronAPI.executeCode(
@@ -241,6 +331,12 @@ function App() {
           durationMs: combinedResult.duration,
           code: currentCode
         })
+        
+        // Handle auto-continue if enabled and kata passed
+        if (autoContinueEnabled && combinedResult.passed) {
+          // TODO: Implement auto-continue in task 20
+          console.log('Auto-continue would trigger here')
+        }
       }
     } catch (error) {
       console.error('Failed to submit code:', error)
@@ -304,14 +400,21 @@ function App() {
                   onChange={handleCodeChange}
                   onRun={handleRun}
                   onSubmit={handleSubmit}
+                  kataId={selectedKata.slug}
                 />
               </div>
               
               <div className="results-panel-container">
+                <ProgressDisplay 
+                  kataId={selectedKata.slug}
+                  onReset={handleReset}
+                  showResetButton={true}
+                />
                 <ResultsPanel
                   results={executionResults}
                   aiJudgment={aiJudgment}
                   isLoading={isExecuting}
+                  onReset={handleReset}
                 />
               </div>
             </div>

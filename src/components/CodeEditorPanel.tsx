@@ -88,25 +88,47 @@ export function CodeEditorPanel({
   initialCode, 
   onChange, 
   onRun, 
-  onSubmit 
-}: CodeEditorProps) {
+  onSubmit,
+  kataId
+}: CodeEditorProps & { kataId?: string }) {
   const [code, setCode] = useState(initialCode)
   const [isEditorReady, setIsEditorReady] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const autosaveTimeoutRef = useRef<NodeJS.Timeout>()
-  // Generate a simple kata ID based on language and initial code hash for now
-  // This will be replaced with actual kata slug when kata selection is implemented
-  const kataId = `${language}-${initialCode.slice(0, 20).replace(/\W/g, '')}`
+  
+  // Use provided kataId or fallback to generated one
+  const effectiveKataId = kataId || `${language}-${initialCode.slice(0, 20).replace(/\W/g, '')}`
 
-  // Load saved code on mount
+  // Load saved code on mount or when kata changes
   useEffect(() => {
-    const savedCode = AutosaveService.loadCode(kataId)
-    if (savedCode !== null && savedCode !== initialCode) {
-      setCode(savedCode)
-      onChange(savedCode)
-    } else {
-      setCode(initialCode)
+    const loadSavedCode = async () => {
+      if (window.electronAPI && effectiveKataId) {
+        try {
+          const savedCode = await window.electronAPI.loadCode(effectiveKataId)
+          if (savedCode !== null && savedCode !== initialCode) {
+            setCode(savedCode)
+            onChange(savedCode)
+          } else {
+            setCode(initialCode)
+          }
+        } catch (error) {
+          console.warn('Failed to load saved code, using initial code:', error)
+          setCode(initialCode)
+        }
+      } else {
+        // Fallback to localStorage for browser mode
+        const savedCode = AutosaveService.loadCode(effectiveKataId)
+        if (savedCode !== null && savedCode !== initialCode) {
+          setCode(savedCode)
+          onChange(savedCode)
+        } else {
+          setCode(initialCode)
+        }
+      }
     }
-  }, [initialCode, kataId, onChange])
+
+    loadSavedCode()
+  }, [initialCode, effectiveKataId, onChange])
 
   // Handle code changes with autosave
   const handleCodeChange = (value: string | undefined) => {
@@ -119,8 +141,22 @@ export function CodeEditorPanel({
       clearTimeout(autosaveTimeoutRef.current)
     }
     
-    autosaveTimeoutRef.current = setTimeout(() => {
-      AutosaveService.saveCode(kataId, newCode)
+    autosaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        if (window.electronAPI && effectiveKataId) {
+          // Save to database via IPC
+          await window.electronAPI.saveCode(effectiveKataId, newCode)
+        } else {
+          // Fallback to localStorage for browser mode
+          AutosaveService.saveCode(effectiveKataId, newCode)
+        }
+        setLastSaved(new Date())
+      } catch (error) {
+        console.warn('Failed to autosave code:', error)
+        // Fallback to localStorage
+        AutosaveService.saveCode(effectiveKataId, newCode)
+        setLastSaved(new Date())
+      }
     }, 1000) // Save after 1 second of inactivity
   }
 
@@ -182,6 +218,9 @@ export function CodeEditorPanel({
       <div className="editor-footer">
         <span className="editor-hint">
           Auto-save enabled • {getMonacoLanguage(language)} syntax highlighting
+          {lastSaved && (
+            <span className="last-saved"> • Last saved: {lastSaved.toLocaleTimeString()}</span>
+          )}
         </span>
       </div>
     </div>
