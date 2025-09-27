@@ -15,6 +15,7 @@ function App() {
   const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
   const [progressKey, setProgressKey] = useState(0) // Key to trigger progress refresh
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const scoringService = ScoringService.getInstance()
 
@@ -374,12 +375,27 @@ function App() {
       </header>
       
       <main className="app-main">
-        <div className="kata-selector-container">
+        {isSidebarCollapsed && (
+          <button 
+            className="sidebar-toggle collapsed"
+            onClick={() => setIsSidebarCollapsed(false)}
+            aria-label="Show sidebar"
+          >
+            <div className="hamburger">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+        )}
+        
+        <div className={`kata-selector-container ${isSidebarCollapsed ? 'collapsed' : ''}`}>
           <KataSelector
             katas={katas}
             selectedKata={selectedKata}
             onKataSelect={handleKataSelect}
             isLoading={isLoading}
+            onToggleSidebar={() => setIsSidebarCollapsed(true)}
           />
         </div>
 

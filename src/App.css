@@ -56,12 +56,74 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  background: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Collapsed hamburger button positioning */
+.sidebar-toggle.collapsed {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+}
+
+.sidebar-toggle:hover {
+  background: #555;
+}
+
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  width: 20px;
+  height: 16px;
+  justify-content: space-between;
+}
+
+.hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #fff;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+.sidebar-toggle.collapsed .hamburger span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.sidebar-toggle.collapsed .hamburger span:nth-child(2) {
+  opacity: 0;
+}
+
+.sidebar-toggle.collapsed .hamburger span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
 }
 
 .kata-selector-container {
   width: 350px;
   background-color: #2a2a2a;
   overflow: hidden;
+  transition: all 0.3s ease;
+  transform: translateX(0);
+}
+
+.kata-selector-container.collapsed {
+  width: 0;
+  transform: translateX(-100%);
 }
 
 .kata-workspace {
@@ -138,6 +200,11 @@
     border-right: none;
     border-bottom: 1px solid #333;
   }
+
+  .kata-selector-container.collapsed {
+    height: 0;
+    transform: translateY(-100%);
+  }
   
   .workspace-panels {
     grid-template-columns: 1fr;
@@ -182,6 +249,20 @@
   .auto-continue-toggle {
     color: #6c757d;
   }
+
+  .sidebar-toggle {
+    background: #e9ecef;
+  }
+
+  .sidebar-toggle:hover {
+    background: #dee2e6;
+  }
+
+  .hamburger span {
+    background: #212529;
+  }
+
+
 
   .kata-selector-container {
     background-color: #f8f9fa;

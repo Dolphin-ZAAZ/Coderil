@@ -13,6 +13,38 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.sidebar-toggle-inline {
+  background: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-inline:hover {
+  background: #555;
+}
+
+.sidebar-toggle-inline .hamburger {
+  display: flex;
+  flex-direction: column;
+  width: 16px;
+  height: 12px;
+  justify-content: space-between;
+}
+
+.sidebar-toggle-inline .hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #fff;
+  border-radius: 1px;
+  transition: all 0.3s ease;
 }
 
 .kata-selector-header h2 {
@@ -266,6 +298,21 @@
   border-radius: 0.25rem;
   font-size: 0.75rem;
   color: #495057;
+}
+
+/* Light mode styles */
+@media (prefers-color-scheme: light) {
+  .sidebar-toggle-inline {
+    background: #e9ecef;
+  }
+
+  .sidebar-toggle-inline:hover {
+    background: #dee2e6;
+  }
+
+  .sidebar-toggle-inline .hamburger span {
+    background: #212529;
+  }
 }
 
 /* Responsive design */

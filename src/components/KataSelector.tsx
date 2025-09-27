@@ -7,9 +7,16 @@ interface KataSelectorProps {
   selectedKata: Kata | null
   onKataSelect: (kata: Kata) => void
   isLoading?: boolean
+  onToggleSidebar?: () => void
 }
 
-export function KataSelector({ katas, selectedKata, onKataSelect, isLoading = false }: KataSelectorProps) {
+export function KataSelector({ 
+  katas, 
+  selectedKata, 
+  onKataSelect, 
+  isLoading = false, 
+  onToggleSidebar
+}: KataSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState<KataFilters>({})
 
@@ -111,6 +118,19 @@ export function KataSelector({ katas, selectedKata, onKataSelect, isLoading = fa
     return (
       <div className="kata-selector">
         <div className="kata-selector-header">
+          {onToggleSidebar && (
+            <button 
+              className="sidebar-toggle-inline"
+              onClick={onToggleSidebar}
+              aria-label="Hide sidebar"
+            >
+              <div className="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </button>
+          )}
           <h2>Available Katas</h2>
         </div>
         <div className="loading-state">
@@ -123,6 +143,19 @@ export function KataSelector({ katas, selectedKata, onKataSelect, isLoading = fa
   return (
     <div className="kata-selector">
       <div className="kata-selector-header">
+        {onToggleSidebar && (
+          <button 
+            className="sidebar-toggle-inline"
+            onClick={onToggleSidebar}
+            aria-label="Hide sidebar"
+          >
+            <div className="hamburger">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+        )}
         <h2>Available Katas</h2>
         <div className="kata-count">
           {filteredKatas.length} of {katas.length} katas
