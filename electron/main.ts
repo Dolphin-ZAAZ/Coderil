@@ -74,6 +74,22 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow()
+  
+  // Check dependencies on startup
+  try {
+    const { DependencyChecker } = await import('../src/services/dependency-checker')
+    const checker = DependencyChecker.getInstance()
+    const dependencies = await checker.checkAllDependencies()
+    
+    // Send dependency status to renderer process once it's ready
+    if (win && win.webContents) {
+      win.webContents.once('did-finish-load', () => {
+        win?.webContents.send('dependency-status', dependencies)
+      })
+    }
+  } catch (error: any) {
+    console.error('Failed to check dependencies on startup:', error)
+  }
 })
 
 app.on('window-all-closed', async () => {
@@ -388,6 +404,33 @@ ipcMain.handle('get-random-kata', async (_event, currentKataId: string, filters:
   // TODO: Implement in task 20
   console.log('Getting random kata:', { currentKataId, filters })
   return null
+})
+
+ipcMain.handle('check-dependencies', async () => {
+  try {
+    console.log('Checking system dependencies...')
+    
+    const { DependencyChecker } = await import('../src/services/dependency-checker')
+    const checker = DependencyChecker.getInstance()
+    const dependencies = await checker.checkAllDependencies()
+    
+    console.log('Dependency check completed:', {
+      python: dependencies.python.available,
+      nodejs: dependencies.nodejs.available,
+      cpp: dependencies.cpp.available,
+      allAvailable: dependencies.allAvailable
+    })
+    
+    return dependencies
+  } catch (error: any) {
+    console.error('Failed to check dependencies:', error)
+    return {
+      python: { name: 'Python', available: false, error: 'Check failed' },
+      nodejs: { name: 'Node.js', available: false, error: 'Check failed' },
+      cpp: { name: 'C++ Compiler', available: false, error: 'Check failed' },
+      allAvailable: false
+    }
+  }
 })
 
 // Additional database-related IPC handlers

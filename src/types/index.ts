@@ -122,6 +122,21 @@ export interface AutoContinueNotification {
   timestamp: Date
 }
 
+export interface DependencyStatus {
+  name: string
+  available: boolean
+  version?: string
+  error?: string
+  installationGuide?: string
+}
+
+export interface SystemDependencies {
+  python: DependencyStatus
+  nodejs: DependencyStatus
+  cpp: DependencyStatus
+  allAvailable: boolean
+}
+
 // Validation result types
 export interface ValidationResult {
   isValid: boolean

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
+import { DependencyWarning } from '@/components/DependencyWarning'
 import { ScoringService } from '@/services/scoring'
 import { useMediaQuery, useElectronAPI } from '@/hooks'
+import { useDependencyChecker } from '@/hooks/useDependencyChecker'
 import './App.css'
 
 function App() {
@@ -22,6 +24,12 @@ function App() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const isTablet = useMediaQuery('(max-width: 1200px)')
   const { isAvailable: isElectronAPIAvailable, isLoading: isElectronAPILoading } = useElectronAPI()
+  const { 
+    dependencies, 
+    shouldShowWarning, 
+    refreshDependencies, 
+    dismissWarning 
+  } = useDependencyChecker()
 
   useEffect(() => {
     // Load data once electronAPI availability is determined
@@ -444,6 +452,14 @@ function App() {
           </div>
         </div>
       </header>
+      
+      {shouldShowWarning && (
+        <DependencyWarning
+          dependencies={dependencies}
+          onRefresh={refreshDependencies}
+          onDismiss={dismissWarning}
+        />
+      )}
       
       <main className="app-main">
         {isSidebarCollapsed && (
