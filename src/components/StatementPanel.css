@@ -302,6 +302,20 @@
   background: none;
 }
 
+/* Syntax highlighting for code blocks in markdown content */
+.statement-markdown pre code.hljs {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 4px;
+  display: block;
+  overflow-x: auto;
+}
+
+.statement-markdown code.hljs {
+  background: none;
+}
+
 @media (prefers-color-scheme: light) {
   .solution-section {
     border-top-color: #e9ecef;
@@ -322,6 +336,12 @@
 
   /* Light theme overrides for highlight.js */
   .solution-code code.hljs {
+    color: #495057;
+  }
+
+  /* Light theme for markdown code blocks */
+  .statement-markdown pre code.hljs {
+    background: #f8f9fa;
     color: #495057;
   }
 }

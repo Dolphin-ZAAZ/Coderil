@@ -264,4 +264,5 @@
   - Test progress persistence across application restarts
   - Verify import/export functionality with sample kata files
   - Test auto-continue functionality with various filter combinations
+  - Do a final full test run and fix any and all issues encountered
   - _Requirements: 1.1, 2.4, 2.5, 4.1, 5.3, 8.1, 8.2, 10.1_

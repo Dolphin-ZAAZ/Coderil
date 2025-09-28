@@ -22,23 +22,51 @@ export function StatementPanel({ statement, metadata, solutionCode, onShowSoluti
     }
   }
 
-  // Highlight code when solution is shown
-  useEffect(() => {
-    if (showingSolution && solutionCode) {
-      hljs.highlightAll()
-    }
-  }, [showingSolution, solutionCode])
   // Parse markdown to HTML with safe options
   const parsedStatement = useMemo(() => {
     // Configure marked for better code highlighting and security
     marked.setOptions({
       breaks: true,
       gfm: true,
+      highlight: function(code, lang) {
+        // Use highlight.js for syntax highlighting
+        if (lang && hljs.getLanguage(lang)) {
+          try {
+            return hljs.highlight(code, { language: lang }).value
+          } catch (err) {
+            console.warn('Highlight.js error:', err)
+          }
+        }
+        // Fallback to auto-detection
+        try {
+          return hljs.highlightAuto(code).value
+        } catch (err) {
+          console.warn('Highlight.js auto-detection error:', err)
+          return code // Return unhighlighted code as fallback
+        }
+      }
     })
     
     // Force synchronous parsing by casting the result
     const result = marked(statement)
     return typeof result === 'string' ? result : ''
+  }, [statement])
+
+  // Highlight code when solution is shown or statement changes
+  useEffect(() => {
+    if (showingSolution && solutionCode) {
+      hljs.highlightAll()
+    }
+  }, [showingSolution, solutionCode])
+
+  // Highlight code blocks in markdown content after rendering
+  useEffect(() => {
+    // Small delay to ensure DOM is updated
+    const timer = setTimeout(() => {
+      hljs.highlightAll()
+    }, 100)
+    
+    return () => clearTimeout(timer)
   }, [statement])
 
   const handleToggleSolution = () => {
