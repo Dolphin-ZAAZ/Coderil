@@ -227,21 +227,33 @@
     flex-direction: column;
     height: auto;
     min-height: 100%;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0;
+    padding: 0;
   }
   
   .statement-panel-container,
-  .code-editor-panel-container {
+  .code-editor-panel-container,
+  .results-panel-container {
     flex: none;
+    width: 100%;
     height: auto;
-    min-height: 300px;
+    position: relative;
+  }
+  
+  /* Specific heights for mobile panels */
+  .statement-panel-container {
+    min-height: 400px;
+    max-height: 50vh;
+    border-bottom: 1px solid #333;
+  }
+  
+  .code-editor-panel-container {
+    min-height: 350px;
+    border-bottom: 1px solid #333;
   }
   
   .results-panel-container {
-    flex: none;
-    height: auto;
-    min-height: 400px;
+    min-height: 300px;
     margin-bottom: 2rem; /* Extra space at bottom for scrolling */
   }
 
@@ -295,6 +307,13 @@
     padding: 0.75rem 1.5rem;
     font-size: 1rem;
     min-height: 44px;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: light) {
+  .statement-panel-container,
+  .code-editor-panel-container {
+    border-bottom-color: #e9ecef;
   }
 }
 
