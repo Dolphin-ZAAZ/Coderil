@@ -702,7 +702,7 @@ function App() {
                 <>
                   <ResizablePanel
                     direction="vertical"
-                    initialSize={isMobile ? 200 : 250}
+                    initialSize={isMobile ? 300 : 350}
                     minSize={150}
                     maxSize={400}
                     className="statement-panel-container"
@@ -717,7 +717,7 @@ function App() {
                   
                   <ResizablePanel
                     direction="vertical"
-                    initialSize={isMobile ? 300 : 350}
+                    initialSize={isMobile ? 350 : 450}
                     minSize={200}
                     maxSize={500}
                     className="code-editor-panel-container"
@@ -772,7 +772,7 @@ function App() {
                 <>
                   <ResizablePanel
                     direction="horizontal"
-                    initialSize={350}
+                    initialSize={420}
                     minSize={250}
                     maxSize={500}
                     className="statement-panel-container"
@@ -787,7 +787,7 @@ function App() {
                   
                   <ResizablePanel
                     direction="horizontal"
-                    initialSize={450}
+                    initialSize={570}
                     minSize={350}
                     maxSize={700}
                     className="code-editor-panel-container"

@@ -184,7 +184,6 @@
 .results-content {
   background: #2a2a2a;
   border-radius: 8px;
-  max-width: 600px;
   max-height: 80vh;
   width: 100%;
   overflow: hidden;
