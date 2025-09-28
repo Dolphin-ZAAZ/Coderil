@@ -132,7 +132,8 @@ export class DatabaseService {
         ['auto_continue_enabled', 'false'],
         ['theme', 'auto'],
         ['editor_font_size', '14'],
-        ['auto_save_interval', '1000']
+        ['auto_save_interval', '1000'],
+        ['openai_api_key', '']
       ];
 
       for (const [key, value] of defaultSettings) {

@@ -41,6 +41,7 @@
 .header-controls {
   display: flex;
   align-items: center;
+  gap: 1rem;
 }
 
 .auto-continue-toggle {
@@ -50,6 +51,23 @@
   color: #ccc;
   cursor: pointer;
   user-select: none;
+}
+
+.settings-button {
+  background: #333;
+  border: 1px solid #555;
+  color: #ccc;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.settings-button:hover {
+  background: #444;
+  border-color: #0066cc;
+  color: #fff;
 }
 
 .auto-continue-toggle input[type="checkbox"] {

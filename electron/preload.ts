@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings and auto-continue
   getSettings: () => ipcRenderer.invoke('get-settings'),
   updateSetting: (key: string, value: any) => ipcRenderer.invoke('update-setting', key, value),
+  saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
+  testOpenAIKey: (apiKey: string) => ipcRenderer.invoke('test-openai-key', apiKey),
   getRandomKata: (currentKataId: string, filters: any) => ipcRenderer.invoke('get-random-kata', currentKataId, filters),
   getAutoContinueEnabled: () => ipcRenderer.invoke('get-auto-continue-enabled'),
   setAutoContinueEnabled: (enabled: boolean) => ipcRenderer.invoke('set-auto-continue-enabled', enabled),
@@ -101,6 +103,8 @@ interface ElectronAPI {
   checkDependencies: () => Promise<any>
   getSettings: () => Promise<any>
   updateSetting: (key: string, value: any) => Promise<void>
+  saveSettings: (settings: any) => Promise<void>
+  testOpenAIKey: (apiKey: string) => Promise<boolean>
   getRandomKata: (currentKataId: string, filters: any) => Promise<any>
   getAutoContinueEnabled: () => Promise<boolean>
   setAutoContinueEnabled: (enabled: boolean) => Promise<void>

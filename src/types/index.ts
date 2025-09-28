@@ -113,6 +113,7 @@ export interface UserSettings {
   theme: 'light' | 'dark' | 'auto'
   editorFontSize: number
   autoSaveInterval: number
+  openaiApiKey?: string
 }
 
 export interface AutoContinueNotification {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -23,6 +23,7 @@ function App() {
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
   const [filters, setFilters] = useState<KataFilters>({})
   const [autoContinueNotification, setAutoContinueNotification] = useState<AutoContinueNotificationType | null>(null)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
@@ -496,6 +497,13 @@ function App() {
               />
               <span className="toggle-text">Auto-continue</span>
             </label>
+            <button 
+              className="settings-button"
+              onClick={() => setIsSettingsOpen(true)}
+              aria-label="Open settings"
+            >
+              ⚙️ Settings
+            </button>
           </div>
         </div>
       </header>
@@ -511,6 +519,11 @@ function App() {
       <AutoContinueNotification
         notification={autoContinueNotification}
         onDismiss={() => setAutoContinueNotification(null)}
+      />
+      
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
       
       <main className="app-main">

@@ -279,10 +279,14 @@ ipcMain.handle('judge-explanation', async (_event, explanation: string, rubric: 
       hasContext: !!context
     })
     
-    // Get AI API key from environment variable
-    const apiKey = process.env.OPENAI_API_KEY
+    // Get AI API key from user settings or environment variable
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    const settings = dbService.getAllSettings()
+    const apiKey = settings.openai_api_key || process.env.OPENAI_API_KEY
+    
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.')
+      throw new Error('OpenAI API key not configured. Please set it in Settings or as OPENAI_API_KEY environment variable.')
     }
     
     const { AIJudgeService } = await import('../src/services/ai-judge')
@@ -331,10 +335,14 @@ ipcMain.handle('judge-template', async (_event, templateContent: string, rubric:
       hasContext: !!context
     })
     
-    // Get AI API key from environment variable
-    const apiKey = process.env.OPENAI_API_KEY
+    // Get AI API key from user settings or environment variable
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    const settings = dbService.getAllSettings()
+    const apiKey = settings.openai_api_key || process.env.OPENAI_API_KEY
+    
     if (!apiKey) {
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.')
+      throw new Error('OpenAI API key not configured. Please set it in Settings or as OPENAI_API_KEY environment variable.')
     }
     
     const { AIJudgeService } = await import('../src/services/ai-judge')
@@ -384,11 +392,12 @@ ipcMain.handle('get-settings', async () => {
       autoContinueEnabled: settings.auto_continue_enabled === 'true',
       theme: settings.theme || 'auto',
       editorFontSize: parseInt(settings.editor_font_size) || 14,
-      autoSaveInterval: parseInt(settings.auto_save_interval) || 1000
+      autoSaveInterval: parseInt(settings.auto_save_interval) || 1000,
+      openaiApiKey: settings.openai_api_key || ''
     }
   } catch (error: any) {
     console.error('Failed to get settings:', error)
-    return { autoContinueEnabled: false, theme: 'auto', editorFontSize: 14, autoSaveInterval: 1000 }
+    return { autoContinueEnabled: false, theme: 'auto', editorFontSize: 14, autoSaveInterval: 1000, openaiApiKey: '' }
   }
 })
 
@@ -406,6 +415,51 @@ ipcMain.handle('update-setting', async (_event, key: string, value: any) => {
   } catch (error: any) {
     console.error('Failed to update setting:', error)
     throw error
+  }
+})
+
+ipcMain.handle('save-settings', async (_event, settings: any) => {
+  try {
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    
+    // Save all settings
+    dbService.setSetting('auto_continue_enabled', settings.autoContinueEnabled.toString())
+    dbService.setSetting('theme', settings.theme)
+    dbService.setSetting('editor_font_size', settings.editorFontSize.toString())
+    dbService.setSetting('auto_save_interval', settings.autoSaveInterval.toString())
+    dbService.setSetting('openai_api_key', settings.openaiApiKey || '')
+    
+    console.log('Saved all user settings')
+  } catch (error: any) {
+    console.error('Failed to save settings:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('test-openai-key', async (_event, apiKey: string) => {
+  try {
+    console.log('Testing OpenAI API key...')
+    
+    // Make a simple API call to test the key
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      console.log('OpenAI API key is valid')
+      return true
+    } else {
+      console.log('OpenAI API key is invalid:', response.status, response.statusText)
+      return false
+    }
+  } catch (error: any) {
+    console.error('Failed to test OpenAI API key:', error)
+    return false
   }
 })
 
