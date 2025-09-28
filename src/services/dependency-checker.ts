@@ -1,5 +1,4 @@
 import { spawn } from 'child_process'
-import { promisify } from 'util'
 
 export interface DependencyStatus {
   name: string

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
+import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
+import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ScoringService } from '@/services/scoring'
+import { AutoContinueService } from '@/services/auto-continue'
 import { useMediaQuery, useElectronAPI } from '@/hooks'
 import { useDependencyChecker } from '@/hooks/useDependencyChecker'
 import './App.css'
@@ -17,10 +19,13 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [autoContinueEnabled, setAutoContinueEnabled] = useState(false)
+  const [filters, setFilters] = useState<KataFilters>({})
+  const [autoContinueNotification, setAutoContinueNotification] = useState<AutoContinueNotificationType | null>(null)
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const scoringService = ScoringService.getInstance()
+  const autoContinueService = AutoContinueService.getInstance()
   const isMobile = useMediaQuery('(max-width: 768px)')
   const isTablet = useMediaQuery('(max-width: 1200px)')
   const { isAvailable: isElectronAPIAvailable, isLoading: isElectronAPILoading } = useElectronAPI()
@@ -177,13 +182,55 @@ function App() {
     setAutoContinueEnabled(newValue)
     try {
       if (window.electronAPI) {
-        await window.electronAPI.updateSetting('auto_continue_enabled', newValue.toString())
+        await window.electronAPI.setAutoContinueEnabled(newValue)
       } else {
         // Browser mode - just update local state
         console.log('Browser mode: auto-continue setting changed to', newValue)
       }
     } catch (error) {
       console.error('Failed to update auto-continue setting:', error)
+    }
+  }
+
+  const handleRandomKataSelect = async () => {
+    if (!selectedKata || !isElectronAPIAvailable) return
+    
+    try {
+      const randomKata = await window.electronAPI.getRandomKata(selectedKata.slug, filters)
+      if (randomKata) {
+        await handleKataSelect(randomKata)
+      } else {
+        console.log('No suitable random kata found with current filters')
+      }
+    } catch (error) {
+      console.error('Failed to get random kata:', error)
+    }
+  }
+
+  const triggerAutoContinue = async (result: ExecutionResult | AIJudgment) => {
+    if (!autoContinueEnabled || !selectedKata || !isElectronAPIAvailable) return
+    
+    // Check if auto-continue should trigger
+    if (!autoContinueService.shouldTrigger(result)) return
+    
+    try {
+      // Get a random kata that respects current filters
+      const nextKata = await window.electronAPI.getRandomKata(selectedKata.slug, filters)
+      
+      if (nextKata) {
+        // Create notification
+        const notification = autoContinueService.createNotification(selectedKata, nextKata)
+        setAutoContinueNotification(notification)
+        
+        // Wait a moment for user to see the notification, then switch
+        setTimeout(async () => {
+          await handleKataSelect(nextKata)
+        }, 1500)
+      } else {
+        console.log('No suitable kata found for auto-continue')
+      }
+    } catch (error) {
+      console.error('Failed to trigger auto-continue:', error)
     }
   }
 
@@ -313,8 +360,7 @@ function App() {
           
           // Handle auto-continue if enabled and kata passed
           if (autoContinueEnabled && aiJudgment.pass) {
-            // TODO: Implement auto-continue in task 20
-            console.log('Auto-continue would trigger here')
+            await triggerAutoContinue(aiJudgment)
           }
         } else {
           // Fallback for katas without rubric
@@ -358,8 +404,7 @@ function App() {
           
           // Handle auto-continue if enabled and kata passed
           if (autoContinueEnabled && aiJudgment.pass) {
-            // TODO: Implement auto-continue in task 20
-            console.log('Auto-continue would trigger here')
+            await triggerAutoContinue(aiJudgment)
           }
         } else {
           // Fallback for katas without rubric
@@ -409,8 +454,7 @@ function App() {
         
         // Handle auto-continue if enabled and kata passed
         if (autoContinueEnabled && combinedResult.passed) {
-          // TODO: Implement auto-continue in task 20
-          console.log('Auto-continue would trigger here')
+          await triggerAutoContinue(combinedResult)
         }
       }
     } catch (error) {
@@ -461,6 +505,11 @@ function App() {
         />
       )}
       
+      <AutoContinueNotification
+        notification={autoContinueNotification}
+        onDismiss={() => setAutoContinueNotification(null)}
+      />
+      
       <main className="app-main">
         {isSidebarCollapsed && (
           <button 
@@ -484,6 +533,9 @@ function App() {
             isLoading={isLoading}
             onToggleSidebar={() => setIsSidebarCollapsed(true)}
             onKatasRefresh={loadKatas}
+            onRandomKataSelect={handleRandomKataSelect}
+            filters={filters}
+            onFilterChange={setFilters}
           />
         </div>
 

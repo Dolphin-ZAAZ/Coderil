@@ -43,26 +43,16 @@ export default defineConfig({
             }
           },
           build: {
-            sourcemap: 'inline',
+            sourcemap: true,
             minify: false,
             outDir: 'dist-electron',
-            lib: {
-              entry: 'electron/preload.ts',
-              formats: ['cjs'],
-              fileName: () => 'preload.js'
-            },
             rollupOptions: {
-              external: ['electron'],
-              output: {
-                format: 'cjs',
-                exports: 'auto'
-              }
+              external: ['electron']
             }
           }
         }
       }
-    ]),
-    renderer()
+    ])
   ],
   resolve: {
     alias: {
@@ -71,9 +61,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      external: ['path', 'fs', 'os', 'crypto']
+    }
   },
   server: {
     port: 5173
+  },
+  define: {
+    global: 'globalThis'
   }
 })

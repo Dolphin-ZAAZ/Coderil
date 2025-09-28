@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   updateSetting: (key: string, value: any) => ipcRenderer.invoke('update-setting', key, value),
   getRandomKata: (currentKataId: string, filters: any) => ipcRenderer.invoke('get-random-kata', currentKataId, filters),
+  getAutoContinueEnabled: () => ipcRenderer.invoke('get-auto-continue-enabled'),
+  setAutoContinueEnabled: (enabled: boolean) => ipcRenderer.invoke('set-auto-continue-enabled', enabled),
 })
 
 console.log('Preload script completed successfully')
@@ -75,7 +77,7 @@ console.log('Preload script completed successfully')
 }
 
 // Type definitions for the exposed API
-export interface ElectronAPI {
+interface ElectronAPI {
   getKatas: () => Promise<any[]>
   loadKata: (slug: string) => Promise<any>
   refreshKatas: () => Promise<any[]>
@@ -100,6 +102,8 @@ export interface ElectronAPI {
   getSettings: () => Promise<any>
   updateSetting: (key: string, value: any) => Promise<void>
   getRandomKata: (currentKataId: string, filters: any) => Promise<any>
+  getAutoContinueEnabled: () => Promise<boolean>
+  setAutoContinueEnabled: (enabled: boolean) => Promise<void>
 }
 
 declare global {

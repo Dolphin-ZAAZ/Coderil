@@ -10,6 +10,9 @@ interface KataSelectorProps {
   isLoading?: boolean
   onToggleSidebar?: () => void
   onKatasRefresh?: () => void
+  onRandomKataSelect?: () => void
+  filters?: KataFilters
+  onFilterChange?: (filters: KataFilters) => void
 }
 
 export function KataSelector({ 
@@ -18,11 +21,18 @@ export function KataSelector({
   onKataSelect, 
   isLoading = false, 
   onToggleSidebar,
-  onKatasRefresh
+  onKatasRefresh,
+  onRandomKataSelect,
+  filters: externalFilters,
+  onFilterChange
 }: KataSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filters, setFilters] = useState<KataFilters>({})
+  const [internalFilters, setInternalFilters] = useState<KataFilters>({})
   const [activeTab, setActiveTab] = useState<'katas' | 'import-export'>('katas')
+  
+  // Use external filters if provided, otherwise use internal filters
+  const filters = externalFilters || internalFilters
+  const setFilters = onFilterChange || setInternalFilters
 
   // Get unique values for filter options
   const filterOptions = useMemo(() => {
@@ -88,27 +98,29 @@ export function KataSelector({
   }, [katas, searchTerm, filters])
 
   const handleFilterChange = (filterType: keyof KataFilters, value: string, checked: boolean) => {
-    setFilters(prev => {
-      const currentValues = prev[filterType] || []
-      
-      if (checked) {
-        // Add value if not already present
-        if (!currentValues.includes(value as any)) {
-          return {
-            ...prev,
-            [filterType]: [...currentValues, value]
-          }
+    const currentValues = filters[filterType] || []
+    
+    let newFilters: KataFilters
+    
+    if (checked) {
+      // Add value if not already present
+      if (!currentValues.includes(value as any)) {
+        newFilters = {
+          ...filters,
+          [filterType]: [...currentValues, value]
         }
       } else {
-        // Remove value
-        return {
-          ...prev,
-          [filterType]: currentValues.filter(v => v !== value)
-        }
+        newFilters = filters
       }
-      
-      return prev
-    })
+    } else {
+      // Remove value
+      newFilters = {
+        ...filters,
+        [filterType]: currentValues.filter((v: any) => v !== value)
+      }
+    }
+    
+    setFilters(newFilters)
   }
 
   const clearFilters = () => {
@@ -206,6 +218,15 @@ export function KataSelector({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
+              {onRandomKataSelect && filteredKatas.length > 0 && (
+                <button
+                  onClick={onRandomKataSelect}
+                  className="random-kata-btn"
+                  title="Select a random kata based on current filters"
+                >
+                  🎲 Random
+                </button>
+              )}
             </div>
 
             <div className="filters-section">

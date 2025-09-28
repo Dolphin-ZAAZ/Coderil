@@ -232,11 +232,17 @@
   - Add error recovery mechanisms for database and file system issues
   - _Requirements: 3.5, 4.5, 5.5, 9.4_
 
-- [ ] 20. Implement auto-continue kata shuffle feature
+- [x] 20. Implement auto-continue kata shuffle feature
+
+
+
+
+
   - Create AutoContinueService for managing auto-continue functionality
   - Add user settings storage and retrieval for auto-continue preference
   - Implement random kata selection logic that respects current filters
   - Add auto-continue toggle UI component in settings or header
+  - Add a button which selects a random kata according to current filters
   - Create notification system for auto-continue transitions
   - Integrate auto-continue trigger with successful kata completion
   - Add settings persistence to database with user_settings table

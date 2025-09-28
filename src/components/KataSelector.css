@@ -104,15 +104,42 @@
   padding: 1rem;
   background: white;
   border-bottom: 1px solid #e9ecef;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .search-input {
-  width: 100%;
+  flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid #ced4da;
   border-radius: 0.375rem;
   font-size: 0.875rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.random-kata-btn {
+  padding: 0.5rem 0.75rem;
+  background: #007acc;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.random-kata-btn:hover {
+  background: #005a9e;
+  transform: translateY(-1px);
+}
+
+.random-kata-btn:active {
+  transform: translateY(0);
 }
 
 .search-input:focus {

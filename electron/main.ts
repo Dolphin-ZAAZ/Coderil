@@ -401,9 +401,63 @@ ipcMain.handle('update-setting', async (_event, key: string, value: any) => {
 })
 
 ipcMain.handle('get-random-kata', async (_event, currentKataId: string, filters: any) => {
-  // TODO: Implement in task 20
-  console.log('Getting random kata:', { currentKataId, filters })
-  return null
+  try {
+    console.log('Getting random kata:', { currentKataId, filters })
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const { AutoContinueService } = await import('../src/services/auto-continue')
+    
+    // Get all available katas
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    const allKatas = await kataManager.loadKatas()
+    
+    // Find current kata
+    const currentKata = allKatas.find(kata => kata.slug === currentKataId)
+    if (!currentKata) {
+      console.warn('Current kata not found:', currentKataId)
+      return null
+    }
+    
+    // Get random kata using auto-continue service
+    const autoContinueService = AutoContinueService.getInstance()
+    const randomKata = autoContinueService.getRandomKataFromFiltered(allKatas, filters, currentKata)
+    
+    console.log('Random kata selected:', randomKata?.slug || 'none')
+    return randomKata
+  } catch (error: any) {
+    console.error('Failed to get random kata:', error)
+    return null
+  }
+})
+
+ipcMain.handle('get-auto-continue-enabled', async () => {
+  try {
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    const setting = dbService.getSetting('auto_continue_enabled')
+    const enabled = setting === 'true'
+    console.log('Auto-continue enabled:', enabled)
+    return enabled
+  } catch (error: any) {
+    console.error('Failed to get auto-continue setting:', error)
+    return false
+  }
+})
+
+ipcMain.handle('set-auto-continue-enabled', async (_event, enabled: boolean) => {
+  try {
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    dbService.setSetting('auto_continue_enabled', enabled.toString())
+    console.log('Auto-continue setting updated:', enabled)
+  } catch (error: any) {
+    console.error('Failed to set auto-continue setting:', error)
+    throw error
+  }
 })
 
 ipcMain.handle('check-dependencies', async () => {
