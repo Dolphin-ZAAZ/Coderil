@@ -194,7 +194,12 @@
   - Integrate import/export with kata selector refresh logic
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 16. Build CLI scaffolding tool
+- [x] 16. Build CLI scaffolding tool
+
+
+
+
+
   - Create standalone CLI script for "new-kata" command
   - Implement template generation for statement.md, meta.yaml, and starter files
   - Add language-specific template creation for Python, JS/TS, and C++
