@@ -36,11 +36,26 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 #root {
   height: 100vh;
   width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  #root {
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  /* Improve touch scrolling on iOS */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (prefers-color-scheme: light) {

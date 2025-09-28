@@ -39,7 +39,9 @@ function App() {
 
   // Auto-collapse sidebar on mobile
   useEffect(() => {
-    setIsSidebarCollapsed(isMobile)
+    if (isMobile) {
+      setIsSidebarCollapsed(true)
+    }
   }, [isMobile])
 
   // Trigger submission when shortform answer is set
@@ -116,6 +118,11 @@ function App() {
     setSelectedKata(kata)
     setExecutionResults(null)
     setAiJudgment(null)
+    
+    // Auto-collapse sidebar on mobile after kata selection
+    if (isMobile) {
+      setIsSidebarCollapsed(true)
+    }
     
     if (!isElectronAPIAvailable) {
       // Create fallback details for browser mode

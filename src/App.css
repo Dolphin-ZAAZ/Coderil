@@ -87,10 +87,13 @@
 
 /* Collapsed hamburger button positioning */
 .sidebar-toggle.collapsed {
-  position: absolute;
+  position: fixed;
   top: 1rem;
   left: 1rem;
   z-index: 1000;
+  background: rgba(51, 51, 51, 0.95);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar-toggle:hover {
@@ -114,16 +117,10 @@
   transition: all 0.3s ease;
 }
 
-.sidebar-toggle.collapsed .hamburger span:nth-child(1) {
-  transform: rotate(45deg) translate(5px, 5px);
-}
-
-.sidebar-toggle.collapsed .hamburger span:nth-child(2) {
-  opacity: 0;
-}
-
-.sidebar-toggle.collapsed .hamburger span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -6px);
+/* Show normal hamburger when collapsed (not X) */
+.sidebar-toggle.collapsed .hamburger span {
+  transform: none;
+  opacity: 1;
 }
 
 .kata-selector-container {
@@ -193,21 +190,23 @@
 
 @media (max-width: 768px) {
   .app {
-    height: auto;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   }
 
   .app-main {
     flex-direction: column;
-    overflow: visible;
-    height: auto;
+    overflow: hidden;
+    height: 100%;
   }
   
   .kata-selector-container {
     width: 100%;
-    height: auto;
+    height: 60vh;
+    max-height: 500px;
     border-right: none;
     border-bottom: 1px solid #333;
+    flex-shrink: 0;
   }
 
   .kata-selector-container.collapsed {
@@ -217,21 +216,85 @@
   }
 
   .kata-workspace {
-    overflow: visible;
-    height: auto;
-    min-height: calc(100vh - 200px);
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 0; /* Force flex child to respect parent height */
+    min-height: 0;
   }
   
   .workspace-panels {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 200px);
+    min-height: 100%;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .statement-panel-container,
+  .code-editor-panel-container {
+    flex: none;
+    height: auto;
+    min-height: 300px;
   }
   
   .results-panel-container {
     flex: none;
     height: auto;
-    min-height: 300px;
+    min-height: 400px;
+    margin-bottom: 2rem; /* Extra space at bottom for scrolling */
+  }
+
+  /* Ensure panels are properly sized on mobile */
+  .workspace-panels > * {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Improve touch targets */
+  .sidebar-toggle {
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .sidebar-toggle.collapsed {
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Better spacing for mobile */
+  .app-header {
+    padding: 1rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .header-title {
+    text-align: center;
+  }
+
+  .header-title h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-title p {
+    font-size: 0.85rem;
+  }
+
+  .header-controls {
+    justify-content: center;
+  }
+
+  .settings-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    min-height: 44px;
   }
 }
 

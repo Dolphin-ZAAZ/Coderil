@@ -141,6 +141,44 @@
   font-style: italic;
 }
 
+/* Mobile styles */
+@media (max-width: 768px) {
+  .editor-header {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .editor-info {
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .editor-actions {
+    gap: 0.75rem;
+    justify-content: stretch;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .editor-container {
+    min-height: 300px;
+  }
+
+  .editor-footer {
+    padding: 0.75rem 1rem;
+  }
+
+  .editor-hint {
+    font-size: 0.8rem;
+  }
+}
+
 @media (prefers-color-scheme: light) {
   .code-editor-panel {
     background-color: #fff;

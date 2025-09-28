@@ -55,6 +55,31 @@
   background: #777;
 }
 
+/* Mobile styles - disable resizing and ensure proper layout */
+@media (max-width: 768px) {
+  .resizable-panel {
+    position: static;
+    overflow: visible;
+  }
+
+  .resizable-panel.horizontal,
+  .resizable-panel.vertical {
+    width: 100%;
+    height: auto;
+    min-width: unset;
+    min-height: unset;
+  }
+
+  .panel-content {
+    height: auto;
+    overflow: visible;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+}
+
 /* Light mode styles */
 @media (prefers-color-scheme: light) {
   .resize-handle {
