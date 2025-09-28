@@ -181,10 +181,16 @@
   - On successfull submission offer a reset button for future completions
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 15. Implement kata import/export functionality
+- [x] 15. Implement kata import/export functionality
+
+
+
+
+
   - Create zip file generation for kata export
   - Implement zip extraction and validation for kata import
   - Add file structure validation during import process
+  - Allow for bulk import/export of multiple katas
   - Integrate import/export with kata selector refresh logic
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 

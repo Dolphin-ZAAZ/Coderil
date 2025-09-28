@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Kata, KataFilters, Language, KataType, Difficulty } from '@/types'
+import { ImportExportPanel } from './ImportExportPanel'
 import './KataSelector.css'
 
 interface KataSelectorProps {
@@ -8,6 +9,7 @@ interface KataSelectorProps {
   onKataSelect: (kata: Kata) => void
   isLoading?: boolean
   onToggleSidebar?: () => void
+  onKatasRefresh?: () => void
 }
 
 export function KataSelector({ 
@@ -15,10 +17,12 @@ export function KataSelector({
   selectedKata, 
   onKataSelect, 
   isLoading = false, 
-  onToggleSidebar
+  onToggleSidebar,
+  onKatasRefresh
 }: KataSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState<KataFilters>({})
+  const [activeTab, setActiveTab] = useState<'katas' | 'import-export'>('katas')
 
   // Get unique values for filter options
   const filterOptions = useMemo(() => {
@@ -114,6 +118,18 @@ export function KataSelector({
 
   const hasActiveFilters = searchTerm || Object.values(filters).some(filter => filter && filter.length > 0)
 
+  const handleImportComplete = () => {
+    if (onKatasRefresh) {
+      onKatasRefresh()
+    }
+    setActiveTab('katas') // Switch back to katas tab after import
+  }
+
+  const handleExportComplete = () => {
+    // Could show a success message or notification here
+    console.log('Export completed')
+  }
+
   if (isLoading) {
     return (
       <div className="kata-selector">
@@ -131,7 +147,7 @@ export function KataSelector({
               </div>
             </button>
           )}
-          <h2>Available Katas</h2>
+          <h2>Kata Manager</h2>
         </div>
         <div className="loading-state">
           <p>Loading katas...</p>
@@ -156,149 +172,178 @@ export function KataSelector({
             </div>
           </button>
         )}
-        <h2>Available Katas</h2>
-        <div className="kata-count">
-          {filteredKatas.length} of {katas.length} katas
-        </div>
+        <h2>Kata Manager</h2>
+        {activeTab === 'katas' && (
+          <div className="kata-count">
+            {filteredKatas.length} of {katas.length} katas
+          </div>
+        )}
       </div>
 
-      <div className="search-section">
-        <input
-          type="text"
-          placeholder="Search katas by title, slug, or tags..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
+      <div className="tab-navigation">
+        <button 
+          className={`tab-button ${activeTab === 'katas' ? 'active' : ''}`}
+          onClick={() => setActiveTab('katas')}
+        >
+          Katas
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'import-export' ? 'active' : ''}`}
+          onClick={() => setActiveTab('import-export')}
+        >
+          Import/Export
+        </button>
       </div>
 
-      <div className="filters-section">
-        <div className="filters-header">
-          <h3>Filters</h3>
-          {hasActiveFilters && (
-            <button onClick={clearFilters} className="clear-filters-btn">
-              Clear All
-            </button>
-          )}
-        </div>
-
-        <div className="filter-groups">
-          {/* Language Filter */}
-          <div className="filter-group">
-            <h4>Language</h4>
-            <div className="filter-options">
-              {filterOptions.languages.map(language => (
-                <label key={language} className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.language?.includes(language) || false}
-                    onChange={(e) => handleFilterChange('language', language, e.target.checked)}
-                  />
-                  <span className="filter-label">{language.toUpperCase()}</span>
-                </label>
-              ))}
+      <div className="tab-content">
+        {activeTab === 'katas' ? (
+          <>
+            <div className="search-section">
+              <input
+                type="text"
+                placeholder="Search katas by title, slug, or tags..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
             </div>
-          </div>
 
-          {/* Type Filter */}
-          <div className="filter-group">
-            <h4>Type</h4>
-            <div className="filter-options">
-              {filterOptions.types.map(type => (
-                <label key={type} className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.type?.includes(type) || false}
-                    onChange={(e) => handleFilterChange('type', type, e.target.checked)}
-                  />
-                  <span className="filter-label">{type}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Difficulty Filter */}
-          <div className="filter-group">
-            <h4>Difficulty</h4>
-            <div className="filter-options">
-              {filterOptions.difficulties.map(difficulty => (
-                <label key={difficulty} className="filter-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.difficulty?.includes(difficulty) || false}
-                    onChange={(e) => handleFilterChange('difficulty', difficulty, e.target.checked)}
-                  />
-                  <span className="filter-label">{difficulty}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Tags Filter */}
-          {filterOptions.tags.length > 0 && (
-            <div className="filter-group">
-              <h4>Tags</h4>
-              <div className="filter-options tags-filter">
-                {filterOptions.tags.map(tag => (
-                  <label key={tag} className="filter-option">
-                    <input
-                      type="checkbox"
-                      checked={filters.tags?.includes(tag) || false}
-                      onChange={(e) => handleFilterChange('tags', tag, e.target.checked)}
-                    />
-                    <span className="filter-label">{tag}</span>
-                  </label>
-                ))}
+            <div className="filters-section">
+              <div className="filters-header">
+                <h3>Filters</h3>
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="clear-filters-btn">
+                    Clear All
+                  </button>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="kata-list-section">
-        {filteredKatas.length === 0 ? (
-          <div className="no-katas">
-            {katas.length === 0 ? (
-              <>
-                <p>No katas found.</p>
-                <p>Add kata folders to the /katas/ directory to get started.</p>
-              </>
-            ) : (
-              <>
-                <p>No katas match your current filters.</p>
-                <button onClick={clearFilters} className="clear-filters-btn">
-                  Clear Filters
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="kata-list">
-            {filteredKatas.map((kata) => (
-              <div
-                key={kata.slug}
-                className={`kata-item ${selectedKata?.slug === kata.slug ? 'selected' : ''}`}
-                onClick={() => onKataSelect(kata)}
-              >
-                <div className="kata-header">
-                  <h3 className="kata-title">{kata.title}</h3>
-                  <div className="kata-meta">
-                    <span className={`difficulty ${kata.difficulty}`}>{kata.difficulty}</span>
-                    <span className="language">{kata.language.toUpperCase()}</span>
-                    <span className={`type ${kata.type}`}>{kata.type}</span>
+              <div className="filter-groups">
+                {/* Language Filter */}
+                <div className="filter-group">
+                  <h4>Language</h4>
+                  <div className="filter-options">
+                    {filterOptions.languages.map(language => (
+                      <label key={language} className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={filters.language?.includes(language) || false}
+                          onChange={(e) => handleFilterChange('language', language, e.target.checked)}
+                        />
+                        <span className="filter-label">{language.toUpperCase()}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
-                
-                {kata.tags.length > 0 && (
-                  <div className="kata-tags">
-                    {kata.tags.map((tag) => (
-                      <span key={tag} className="tag">{tag}</span>
+
+                {/* Type Filter */}
+                <div className="filter-group">
+                  <h4>Type</h4>
+                  <div className="filter-options">
+                    {filterOptions.types.map(type => (
+                      <label key={type} className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={filters.type?.includes(type) || false}
+                          onChange={(e) => handleFilterChange('type', type, e.target.checked)}
+                        />
+                        <span className="filter-label">{type}</span>
+                      </label>
                     ))}
+                  </div>
+                </div>
+
+                {/* Difficulty Filter */}
+                <div className="filter-group">
+                  <h4>Difficulty</h4>
+                  <div className="filter-options">
+                    {filterOptions.difficulties.map(difficulty => (
+                      <label key={difficulty} className="filter-option">
+                        <input
+                          type="checkbox"
+                          checked={filters.difficulty?.includes(difficulty) || false}
+                          onChange={(e) => handleFilterChange('difficulty', difficulty, e.target.checked)}
+                        />
+                        <span className="filter-label">{difficulty}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tags Filter */}
+                {filterOptions.tags.length > 0 && (
+                  <div className="filter-group">
+                    <h4>Tags</h4>
+                    <div className="filter-options tags-filter">
+                      {filterOptions.tags.map(tag => (
+                        <label key={tag} className="filter-option">
+                          <input
+                            type="checkbox"
+                            checked={filters.tags?.includes(tag) || false}
+                            onChange={(e) => handleFilterChange('tags', tag, e.target.checked)}
+                          />
+                          <span className="filter-label">{tag}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            </div>
+
+            <div className="kata-list-section">
+              {filteredKatas.length === 0 ? (
+                <div className="no-katas">
+                  {katas.length === 0 ? (
+                    <>
+                      <p>No katas found.</p>
+                      <p>Add kata folders to the /katas/ directory to get started.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>No katas match your current filters.</p>
+                      <button onClick={clearFilters} className="clear-filters-btn">
+                        Clear Filters
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="kata-list">
+                  {filteredKatas.map((kata) => (
+                    <div
+                      key={kata.slug}
+                      className={`kata-item ${selectedKata?.slug === kata.slug ? 'selected' : ''}`}
+                      onClick={() => onKataSelect(kata)}
+                    >
+                      <div className="kata-header">
+                        <h3 className="kata-title">{kata.title}</h3>
+                        <div className="kata-meta">
+                          <span className={`difficulty ${kata.difficulty}`}>{kata.difficulty}</span>
+                          <span className="language">{kata.language.toUpperCase()}</span>
+                          <span className={`type ${kata.type}`}>{kata.type}</span>
+                        </div>
+                      </div>
+                      
+                      {kata.tags.length > 0 && (
+                        <div className="kata-tags">
+                          {kata.tags.map((tag) => (
+                            <span key={tag} className="tag">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <ImportExportPanel
+            katas={katas}
+            onImportComplete={handleImportComplete}
+            onExportComplete={handleExportComplete}
+          />
         )}
       </div>
     </div>

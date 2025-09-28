@@ -1,0 +1,282 @@
+.import-export-panel {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.panel-header h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.import-section,
+.export-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e1e5e9;
+}
+
+.import-section h4,
+.export-section h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1.2rem;
+}
+
+.import-section p,
+.export-section p {
+  margin: 0 0 15px 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.import-button,
+.export-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.import-button:hover,
+.export-button:hover {
+  background: #0056b3;
+}
+
+.import-button:disabled,
+.export-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.kata-selection {
+  margin: 20px 0;
+}
+
+.selection-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.select-all-button {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.select-all-button:hover {
+  background: #545b62;
+}
+
+.selection-count {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.kata-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e1e5e9;
+  border-radius: 4px;
+}
+
+.kata-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.kata-item:last-child {
+  border-bottom: none;
+}
+
+.kata-item:hover {
+  background: #f8f9fa;
+}
+
+.kata-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex: 1;
+}
+
+.kata-checkbox input[type="checkbox"] {
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.kata-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.kata-title {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.kata-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.export-single-button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-left: 10px;
+}
+
+.export-single-button:hover {
+  background: #1e7e34;
+}
+
+.results-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.results-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 600px;
+  max-height: 80vh;
+  width: 90%;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #f8f9fa;
+}
+
+.results-header h4 {
+  margin: 0;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.results-body {
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.success-section,
+.error-section {
+  margin-bottom: 20px;
+}
+
+.success-section h5 {
+  color: #28a745;
+  margin: 0 0 10px 0;
+}
+
+.error-section h5 {
+  color: #dc3545;
+  margin: 0 0 10px 0;
+}
+
+.success-section ul,
+.error-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.success-item {
+  color: #155724;
+  margin-bottom: 5px;
+}
+
+.error-item {
+  color: #721c24;
+  margin-bottom: 8px;
+}
+
+.error-item strong {
+  color: #dc3545;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .import-export-panel {
+    padding: 15px;
+    margin: 15px 0;
+  }
+  
+  .kata-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .export-single-button {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+  
+  .results-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .selection-controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+}

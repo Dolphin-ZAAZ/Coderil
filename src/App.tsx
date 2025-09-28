@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
 import { ScoringService } from '@/services/scoring'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useMediaQuery, useElectronAPI } from '@/hooks'
 import './App.css'
 
 function App() {
@@ -21,15 +21,28 @@ function App() {
   const scoringService = ScoringService.getInstance()
   const isMobile = useMediaQuery('(max-width: 768px)')
   const isTablet = useMediaQuery('(max-width: 1200px)')
+  const { isAvailable: isElectronAPIAvailable, isLoading: isElectronAPILoading } = useElectronAPI()
 
   useEffect(() => {
-    // Load katas and settings on app start
-    loadKatas()
-    loadSettings()
-  }, [])
+    // Load data once electronAPI availability is determined
+    if (!isElectronAPILoading) {
+      if (isElectronAPIAvailable) {
+        loadKatas()
+        loadSettings()
+      } else {
+        console.warn('Running in browser mode - limited functionality available')
+        setIsLoading(false)
+      }
+    }
+  }, [isElectronAPIAvailable, isElectronAPILoading])
 
   const loadSettings = async () => {
     try {
+      if (!window.electronAPI) {
+        console.warn('ElectronAPI not available for loading settings');
+        return;
+      }
+      
       const settings = await window.electronAPI.getSettings()
       setAutoContinueEnabled(settings.autoContinueEnabled)
     } catch (error) {
@@ -43,7 +56,7 @@ function App() {
       setIsLoading(true)
       
       if (!window.electronAPI) {
-        console.error('electronAPI not available - running in browser mode?')
+        console.warn('ElectronAPI not available - running in browser mode')
         setKatas([])
         return
       }
@@ -55,6 +68,7 @@ function App() {
     } catch (error: any) {
       console.error('Failed to load katas:', error)
       console.error('Error details:', error.message, error.stack)
+      setKatas([]) // Set empty array on error
     } finally {
       setIsLoading(false)
     }
@@ -64,6 +78,35 @@ function App() {
     setSelectedKata(kata)
     setExecutionResults(null)
     setAiJudgment(null)
+    
+    if (!isElectronAPIAvailable) {
+      // Create fallback details for browser mode
+      const fallbackDetails: KataDetails = {
+        ...kata,
+        statement: `# ${kata.title}\n\nRunning in browser mode - kata details not available.`,
+        metadata: {
+          slug: kata.slug,
+          title: kata.title,
+          language: kata.language as Language,
+          type: kata.type as any,
+          difficulty: kata.difficulty as any,
+          tags: kata.tags,
+          entry: `entry.${kata.language}`,
+          test: { kind: 'programmatic', file: `tests.${kata.language}` },
+          timeout_ms: 5000
+        },
+        starterCode: getStarterCodePlaceholder(kata.language as Language),
+        testConfig: {
+          kind: 'programmatic',
+          publicTestFile: `tests.${kata.language}`,
+          timeoutMs: 5000
+        }
+      }
+      
+      setKataDetails(fallbackDetails)
+      setCurrentCode(fallbackDetails.starterCode)
+      return
+    }
     
     try {
       // Load actual kata details from the main process
@@ -166,6 +209,17 @@ function App() {
   const handleRun = async () => {
     if (!kataDetails || !selectedKata) return
     
+    if (!isElectronAPIAvailable) {
+      setExecutionResults({
+        success: false,
+        output: '',
+        errors: 'Code execution not available in browser mode',
+        testResults: [],
+        duration: 0
+      })
+      return
+    }
+    
     setIsExecuting(true)
     setExecutionResults(null)
     setAiJudgment(null)
@@ -202,6 +256,17 @@ function App() {
 
   const handleSubmit = async () => {
     if (!kataDetails || !selectedKata) return
+    
+    if (!isElectronAPIAvailable) {
+      setExecutionResults({
+        success: false,
+        output: '',
+        errors: 'Code submission not available in browser mode',
+        testResults: [],
+        duration: 0
+      })
+      return
+    }
     
     setIsExecuting(true)
     setExecutionResults(null)
@@ -361,6 +426,11 @@ function App() {
           <div className="header-title">
             <h1>Code Kata App</h1>
             <p>Practice coding challenges with local execution and AI-powered judging</p>
+            {!isElectronAPIAvailable && !isElectronAPILoading && (
+              <div className="browser-mode-warning">
+                ⚠️ Running in browser mode - some features may be limited
+              </div>
+            )}
           </div>
           <div className="header-controls">
             <label className="auto-continue-toggle">
@@ -397,6 +467,7 @@ function App() {
             onKataSelect={handleKataSelect}
             isLoading={isLoading}
             onToggleSidebar={() => setIsSidebarCollapsed(true)}
+            onKatasRefresh={loadKatas}
           />
         </div>
 

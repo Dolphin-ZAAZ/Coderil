@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -458,5 +458,159 @@ ipcMain.handle('get-kata-stats', async (_event, kataId: string) => {
       averageScore: 0,
       passedAttempts: 0
     }
+  }
+})
+
+// Import/Export IPC handlers
+ipcMain.handle('import-kata', async (_event, zipPath: string) => {
+  try {
+    console.log('Importing kata from:', zipPath)
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    await kataManager.importKata(zipPath)
+    
+    console.log('Kata imported successfully from:', zipPath)
+    return { success: true }
+  } catch (error: any) {
+    console.error('Failed to import kata:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('export-kata', async (_event, slug: string) => {
+  try {
+    console.log('Exporting kata:', slug)
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    const outputPath = await kataManager.exportKata(slug)
+    
+    console.log('Kata exported successfully to:', outputPath)
+    return { success: true, outputPath }
+  } catch (error: any) {
+    console.error('Failed to export kata:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('import-multiple-katas', async (_event, zipPaths: string[]) => {
+  try {
+    console.log('Importing multiple katas:', zipPaths.length, 'files')
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    const results = await kataManager.importMultipleKatas(zipPaths)
+    
+    console.log('Bulk import completed:', {
+      success: results.success.length,
+      failed: results.failed.length
+    })
+    
+    return results
+  } catch (error: any) {
+    console.error('Failed to import multiple katas:', error)
+    return { success: [], failed: zipPaths.map(path => ({ path, error: error.message })) }
+  }
+})
+
+ipcMain.handle('export-multiple-katas', async (_event, slugs: string[]) => {
+  try {
+    console.log('Exporting multiple katas:', slugs.length, 'katas')
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    const results = await kataManager.exportMultipleKatas(slugs)
+    
+    console.log('Bulk export completed:', {
+      success: results.success.length,
+      failed: results.failed.length
+    })
+    
+    return results
+  } catch (error: any) {
+    console.error('Failed to export multiple katas:', error)
+    return { success: [], failed: slugs.map(slug => ({ slug, error: error.message })) }
+  }
+})
+
+ipcMain.handle('refresh-katas', async () => {
+  try {
+    console.log('Refreshing kata list')
+    
+    const { KataManagerService } = await import('../src/services/kata-manager')
+    const katasPath = process.env.VITE_DEV_SERVER_URL 
+      ? join(process.cwd(), 'katas')  // Development: use project root
+      : join(process.resourcesPath, 'katas')  // Production: use resources path
+    
+    const kataManager = KataManagerService.getInstance(katasPath)
+    const katas = await kataManager.refreshKatas()
+    
+    console.log('Kata list refreshed:', katas.length, 'katas found')
+    return katas
+  } catch (error: any) {
+    console.error('Failed to refresh katas:', error)
+    return []
+  }
+})
+
+// File dialog handlers
+ipcMain.handle('open-file-dialog', async () => {
+  try {
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Select Kata Zip Files to Import',
+      filters: [
+        { name: 'Zip Files', extensions: ['zip'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile', 'multiSelections']
+    })
+    
+    if (result.canceled) {
+      return []
+    }
+    
+    return result.filePaths
+  } catch (error: any) {
+    console.error('Failed to open file dialog:', error)
+    return []
+  }
+})
+
+ipcMain.handle('save-file-dialog', async (_event, defaultName?: string) => {
+  try {
+    const result = await dialog.showSaveDialog(win!, {
+      title: 'Save Kata Export',
+      defaultPath: defaultName || 'kata-export.zip',
+      filters: [
+        { name: 'Zip Files', extensions: ['zip'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    
+    if (result.canceled || !result.filePath) {
+      return null
+    }
+    
+    return result.filePath
+  } catch (error: any) {
+    console.error('Failed to open save dialog:', error)
+    return null
   }
 })

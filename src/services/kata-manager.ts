@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import AdmZip from 'adm-zip';
 import { 
   Kata, 
   KataDetails, 
@@ -379,19 +380,280 @@ export class KataManagerService {
   /**
    * Imports a kata from a zip file
    */
-  public async importKata(_zipPath: string): Promise<void> {
-    // This is a placeholder for the import functionality
-    // Will be implemented in task 15
-    throw new Error('Kata import functionality not yet implemented');
+  public async importKata(zipPath: string): Promise<void> {
+    if (!fs.existsSync(zipPath)) {
+      const error = new Error(`Zip file not found: ${zipPath}`) as FileSystemError;
+      error.code = 'FILE_NOT_FOUND';
+      error.path = zipPath;
+      throw error;
+    }
+
+    try {
+      const zip = new AdmZip(zipPath);
+      const zipEntries = zip.getEntries();
+
+      if (zipEntries.length === 0) {
+        throw new Error('Zip file is empty');
+      }
+
+      // Find the kata directory structure in the zip
+      const kataStructure = this.analyzeZipStructure(zipEntries);
+      
+      if (!kataStructure.isValid) {
+        throw new Error(`Invalid kata structure in zip: ${kataStructure.errors.join(', ')}`);
+      }
+
+      // Extract to temporary directory first for validation
+      const tempDir = path.join(this.katasDirectory, '.temp_import_' + Date.now());
+      
+      try {
+        // Create temp directory
+        fs.mkdirSync(tempDir, { recursive: true });
+
+        // Extract zip contents
+        zip.extractAllTo(tempDir, true);
+
+        // Find the actual kata directory in the extracted content
+        const kataDir = this.findKataDirectory(tempDir);
+        if (!kataDir) {
+          throw new Error('No valid kata directory found in zip file');
+        }
+
+        // Validate the extracted kata
+        const validation = this.validateKataDirectory(kataDir);
+        if (!validation.isValid) {
+          throw new Error(`Invalid kata structure: ${validation.errors.join(', ')}`);
+        }
+
+        // Load metadata to get the kata slug
+        const metadata = await this.loadKataMetadata(kataDir);
+        if (!metadata) {
+          throw new Error('Failed to load kata metadata from imported zip');
+        }
+
+        // Check if kata already exists
+        const targetDir = path.join(this.katasDirectory, metadata.slug);
+        if (fs.existsSync(targetDir)) {
+          throw new Error(`Kata with slug '${metadata.slug}' already exists`);
+        }
+
+        // Move from temp to final location
+        fs.renameSync(kataDir, targetDir);
+
+        console.log(`Successfully imported kata: ${metadata.slug}`);
+      } finally {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+      }
+    } catch (error) {
+      const fsError = new Error(`Failed to import kata from ${zipPath}: ${error}`) as FileSystemError;
+      fsError.code = 'IMPORT_FAILED';
+      fsError.path = zipPath;
+      throw fsError;
+    }
   }
 
   /**
    * Exports a kata to a zip file
    */
-  public async exportKata(_slug: string): Promise<string> {
-    // This is a placeholder for the export functionality
-    // Will be implemented in task 15
-    throw new Error('Kata export functionality not yet implemented');
+  public async exportKata(slug: string): Promise<string> {
+    const kataPath = await this.getKataPath(slug);
+    if (!kataPath) {
+      const error = new Error(`Kata not found: ${slug}`) as FileSystemError;
+      error.code = 'KATA_NOT_FOUND';
+      throw error;
+    }
+
+    try {
+      // Validate kata before export
+      const validation = this.validateKataDirectory(kataPath);
+      if (!validation.isValid) {
+        throw new Error(`Cannot export invalid kata: ${validation.errors.join(', ')}`);
+      }
+
+      const zip = new AdmZip();
+      
+      // Add all files from the kata directory
+      this.addDirectoryToZip(zip, kataPath, slug);
+
+      // Generate output path
+      const outputPath = path.join(this.katasDirectory, `${slug}.zip`);
+      
+      // Write zip file
+      zip.writeZip(outputPath);
+
+      console.log(`Successfully exported kata: ${slug} to ${outputPath}`);
+      return outputPath;
+    } catch (error) {
+      const fsError = new Error(`Failed to export kata ${slug}: ${error}`) as FileSystemError;
+      fsError.code = 'EXPORT_FAILED';
+      fsError.path = kataPath;
+      throw fsError;
+    }
+  }
+
+  /**
+   * Imports multiple katas from zip files
+   */
+  public async importMultipleKatas(zipPaths: string[]): Promise<{ success: string[], failed: { path: string, error: string }[] }> {
+    const results = {
+      success: [] as string[],
+      failed: [] as { path: string, error: string }[]
+    };
+
+    for (const zipPath of zipPaths) {
+      try {
+        await this.importKata(zipPath);
+        results.success.push(zipPath);
+      } catch (error) {
+        results.failed.push({
+          path: zipPath,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Exports multiple katas to zip files
+   */
+  public async exportMultipleKatas(slugs: string[]): Promise<{ success: string[], failed: { slug: string, error: string }[] }> {
+    const results = {
+      success: [] as string[],
+      failed: [] as { slug: string, error: string }[]
+    };
+
+    for (const slug of slugs) {
+      try {
+        const outputPath = await this.exportKata(slug);
+        results.success.push(outputPath);
+      } catch (error) {
+        results.failed.push({
+          slug,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Analyzes zip structure to validate kata format
+   */
+  private analyzeZipStructure(zipEntries: AdmZip.IZipEntry[]): ValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Check for required files
+    const entryNames = zipEntries.map(entry => entry.entryName);
+    
+    // Look for meta.yaml and statement.md at any level
+    const hasMetaYaml = entryNames.some(name => name.endsWith('meta.yaml') || name.endsWith('meta.yml'));
+    const hasStatement = entryNames.some(name => name.endsWith('statement.md'));
+
+    if (!hasMetaYaml) {
+      errors.push('Missing meta.yaml file');
+    }
+
+    if (!hasStatement) {
+      errors.push('Missing statement.md file');
+    }
+
+    // Check for reasonable structure (not too many nested levels)
+    const maxDepth = Math.max(...entryNames.map(name => name.split('/').length));
+    if (maxDepth > 5) {
+      warnings.push('Zip structure is deeply nested, this might cause issues');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+
+  /**
+   * Finds the kata directory in extracted content
+   */
+  private findKataDirectory(extractedPath: string, maxDepth: number = 3): string | null {
+    // Check if the extracted path itself is a kata directory
+    if (this.isKataDirectory(extractedPath)) {
+      return extractedPath;
+    }
+
+    // Prevent infinite recursion
+    if (maxDepth <= 0) {
+      return null;
+    }
+
+    // Look for kata directory in subdirectories
+    try {
+      const entries = fs.readdirSync(extractedPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const subPath = path.join(extractedPath, entry.name);
+          if (this.isKataDirectory(subPath)) {
+            return subPath;
+          }
+          
+          // Recursively check one level deeper with reduced depth
+          const deeperPath = this.findKataDirectory(subPath, maxDepth - 1);
+          if (deeperPath) {
+            return deeperPath;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Error scanning directory ${extractedPath}:`, error);
+    }
+
+    return null;
+  }
+
+  /**
+   * Checks if a directory contains kata files
+   */
+  private isKataDirectory(dirPath: string): boolean {
+    try {
+      const files = fs.readdirSync(dirPath);
+      return files.includes('meta.yaml') || files.includes('meta.yml');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Recursively adds directory contents to zip
+   */
+  private addDirectoryToZip(zip: AdmZip, dirPath: string, baseName: string): void {
+    const files = fs.readdirSync(dirPath);
+
+    for (const file of files) {
+      const filePath = path.join(dirPath, file);
+      const stat = fs.statSync(filePath);
+
+      if (stat.isDirectory()) {
+        // Recursively add subdirectory
+        this.addDirectoryToZip(zip, filePath, baseName);
+      } else {
+        // Add file to zip with proper path structure
+        const relativePath = path.relative(path.dirname(dirPath), filePath);
+        const zipPath = relativePath.replace(/\\/g, '/'); // Ensure forward slashes for zip
+        
+        try {
+          const fileContent = fs.readFileSync(filePath);
+          zip.addFile(zipPath, fileContent);
+        } catch (error) {
+          console.warn(`Failed to add file ${filePath} to zip:`, error);
+        }
+      }
+    }
   }
 
   /**

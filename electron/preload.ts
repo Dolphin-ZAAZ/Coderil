@@ -1,7 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from 'electron'
+
+console.log('Preload script starting...')
 
 // --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
+try {
+  contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
     return ipcRenderer.on(channel, (event: any, ...args: any[]) => (listener as any)(event, ...args))
@@ -25,8 +28,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Kata management
   getKatas: () => ipcRenderer.invoke('get-katas'),
   loadKata: (slug: string) => ipcRenderer.invoke('load-kata', slug),
+  refreshKatas: () => ipcRenderer.invoke('refresh-katas'),
+  
+  // Import/Export
   importKata: (zipPath: string) => ipcRenderer.invoke('import-kata', zipPath),
   exportKata: (slug: string) => ipcRenderer.invoke('export-kata', slug),
+  importMultipleKatas: (zipPaths: string[]) => ipcRenderer.invoke('import-multiple-katas', zipPaths),
+  exportMultipleKatas: (slugs: string[]) => ipcRenderer.invoke('export-multiple-katas', slugs),
   
   // Code execution
   executeCode: (language: string, code: string, kataPath: string, hidden: boolean, timeoutMs?: number) =>
@@ -50,7 +58,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // File operations
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
-  saveFileDialog: () => ipcRenderer.invoke('save-file-dialog'),
+  saveFileDialog: (defaultName?: string) => ipcRenderer.invoke('save-file-dialog', defaultName),
   
   // System checks
   checkDependencies: () => ipcRenderer.invoke('check-dependencies'),
@@ -61,12 +69,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRandomKata: (currentKataId: string, filters: any) => ipcRenderer.invoke('get-random-kata', currentKataId, filters),
 })
 
+console.log('Preload script completed successfully')
+} catch (error) {
+  console.error('Error in preload script:', error)
+}
+
 // Type definitions for the exposed API
 export interface ElectronAPI {
   getKatas: () => Promise<any[]>
   loadKata: (slug: string) => Promise<any>
-  importKata: (zipPath: string) => Promise<void>
-  exportKata: (slug: string) => Promise<string>
+  refreshKatas: () => Promise<any[]>
+  importKata: (zipPath: string) => Promise<{ success: boolean, error?: string }>
+  exportKata: (slug: string) => Promise<{ success: boolean, outputPath?: string, error?: string }>
+  importMultipleKatas: (zipPaths: string[]) => Promise<{ success: string[], failed: { path: string, error: string }[] }>
+  exportMultipleKatas: (slugs: string[]) => Promise<{ success: string[], failed: { slug: string, error: string }[] }>
   executeCode: (language: string, code: string, kataPath: string, hidden: boolean, timeoutMs?: number) => Promise<any>
   saveAttempt: (attempt: any) => Promise<void>
   getProgress: (kataId: string) => Promise<any>
@@ -79,7 +95,7 @@ export interface ElectronAPI {
   judgeExplanation: (explanation: string, rubric: any, topic?: string, context?: string) => Promise<any>
   judgeTemplate: (templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) => Promise<any>
   openFileDialog: () => Promise<string[]>
-  saveFileDialog: () => Promise<string>
+  saveFileDialog: (defaultName?: string) => Promise<string | null>
   checkDependencies: () => Promise<any>
   getSettings: () => Promise<any>
   updateSetting: (key: string, value: any) => Promise<void>

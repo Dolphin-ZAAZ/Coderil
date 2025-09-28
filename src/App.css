@@ -28,6 +28,16 @@
   font-size: 0.9rem;
 }
 
+.browser-mode-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #ff6b35;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .header-controls {
   display: flex;
   align-items: center;
