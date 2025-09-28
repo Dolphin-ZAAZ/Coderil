@@ -24,7 +24,7 @@ if (!kataName) {
   console.error('   or: npm run new-kata <kata-name> [options]');
   console.error('Options:');
   console.error('  --language, -l <lang>    Language (py, js, ts, cpp) [default: py]');
-  console.error('  --type, -t <type>        Type (code, explain, template, codebase, shortform, multiple-choice, one-liner) [default: code]');
+  console.error('  --type, -t <type>        Type (code, explain, template, codebase, shortform, multiple-choice, one-liner, multi-question) [default: code]');
   console.error('  --difficulty, -d <diff>  Difficulty (easy, medium, hard) [default: easy]');
   console.error('  --title <title>          Custom title [default: derived from kata-name]');
   process.exit(1);
@@ -32,7 +32,7 @@ if (!kataName) {
 
 // Validation arrays
 const validLanguages = ['py', 'js', 'ts', 'cpp'];
-const validTypes = ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner'];
+const validTypes = ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'];
 const validDifficulties = ['easy', 'medium', 'hard'];
 
 // Parse options
@@ -119,18 +119,18 @@ try {
 
 // Template generation functions
 function generateMetaYaml(kataName, options) {
-  const entryFile = ['shortform', 'multiple-choice', 'one-liner'].includes(options.type) 
+  const entryFile = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) 
     ? 'answer.md' 
     : getEntryFileName(options.language);
   const testFile = getTestFileName(options.language);
   
-  const language = ['shortform', 'multiple-choice', 'one-liner'].includes(options.type) 
+  const language = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) 
     ? 'none' 
     : options.language;
-  const tags = ['shortform', 'multiple-choice', 'one-liner'].includes(options.type)
+  const tags = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)
     ? ["concept", "quick"]
     : ["practice", options.language];
-  const testFile2 = ['shortform', 'multiple-choice', 'one-liner'].includes(options.type)
+  const testFile2 = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)
     ? 'none'
     : testFile;
 
@@ -145,7 +145,7 @@ solution: "solution.${getFileExtension(options.language)}"
 test:
   kind: "${getTestKind(options.type)}"
   file: "${testFile2}"
-timeout_ms: ${['shortform', 'multiple-choice', 'one-liner'].includes(options.type) ? 0 : 5000}`;
+timeout_ms: ${['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) ? 0 : 5000}`;
 
   // Add shortform-specific configurations
   if (options.type === 'shortform') {
@@ -191,6 +191,50 @@ oneLiner:
     - "Alternative answer"
   caseSensitive: false
   explanation: "Optional explanation shown after submission"`;
+  } else if (options.type === 'multi-question') {
+    baseYaml += `
+
+# Multi-question configuration
+multiQuestion:
+  title: "Replace with your quiz title"
+  description: "Replace with your quiz description"
+  passingScore: 75
+  showProgressBar: true
+  allowReview: true
+  questions:
+    - id: "q1"
+      type: "multiple-choice"
+      question: "Replace with your multiple choice question"
+      allowMultiple: false
+      options:
+        - id: "a"
+          text: "Option A"
+        - id: "b"
+          text: "Option B"
+        - id: "c"
+          text: "Option C"
+      correctAnswers: ["a"]
+      points: 1
+      explanation: "Optional explanation for this question"
+    
+    - id: "q2"
+      type: "shortform"
+      question: "Replace with your short answer question"
+      expectedAnswer: "Expected answer"
+      acceptableAnswers: ["Expected answer", "Alternative"]
+      caseSensitive: false
+      maxLength: 100
+      points: 1
+      explanation: "Optional explanation for this question"
+    
+    - id: "q3"
+      type: "one-liner"
+      question: "Replace with your one-liner question"
+      expectedAnswer: "Expected answer"
+      acceptableAnswers: ["Expected answer", "Alternative"]
+      caseSensitive: false
+      points: 1
+      explanation: "Optional explanation for this question"`;
   }
 
   return baseYaml + '\n';
@@ -209,6 +253,8 @@ function generateStatementMd(options) {
     return generateMultipleChoiceStatement(options);
   } else if (options.type === 'one-liner') {
     return generateOneLinerStatement(options);
+  } else if (options.type === 'multi-question') {
+    return generateMultiQuestionStatement(options);
   } else {
     return generateCodeStatement(options);
   }
@@ -477,6 +523,37 @@ This kata is configured in \`meta.yaml\` with:
 `;
 }
 
+function generateMultiQuestionStatement(options) {
+  return `# ${options.title}
+
+## Overview
+
+This is a multi-question kata that combines different types of questions to test your knowledge comprehensively.
+
+## Instructions
+
+This kata contains multiple questions of different types:
+- Multiple choice questions (some may allow multiple selections)
+- Short answer questions  
+- Fill-in-the-blank questions
+
+Navigate through the questions using the Next/Previous buttons. You can review your answers before final submission.
+
+## Configuration
+
+The questions and settings are configured in the \`meta.yaml\` file under the \`multiQuestion\` section:
+
+- \`title\`: Overall title for the question set
+- \`description\`: Brief description of the quiz
+- \`passingScore\`: Percentage needed to pass (default: 70%)
+- \`showProgressBar\`: Whether to show progress indicator
+- \`allowReview\`: Allow reviewing answers before submission
+- \`questions\`: Array of question objects
+
+Each question can be of type \`shortform\`, \`multiple-choice\`, or \`one-liner\` with appropriate configuration.
+`;
+}
+
 function generateEntryFile(options) {
   switch (options.language) {
     case 'py':
@@ -499,7 +576,7 @@ function generatePythonEntry(options) {
     return '# Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '# Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner'].includes(options.type)) {
+  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
     return '# Your answer will be entered through the UI\n';
   }
   
@@ -525,7 +602,7 @@ function generateJavaScriptEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner'].includes(options.type)) {
+  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -549,7 +626,7 @@ function generateTypeScriptEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner'].includes(options.type)) {
+  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -571,7 +648,7 @@ function generateCppEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner'].includes(options.type)) {
+  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -926,7 +1003,7 @@ int main() {
 }
 
 function generateTestFile(options) {
-  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(options.type)) {
+  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
     return null; // No test files for non-code katas
   }
   
@@ -1167,7 +1244,7 @@ function getFileExtension(language) {
 }
 
 function getTestKind(type) {
-  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(type)) {
+  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(type)) {
     return 'none';
   }
   return 'programmatic';
@@ -1426,6 +1503,14 @@ Select your answer(s) from the choices provided.`;
     const answerContent = `# Your Answer
 
 Provide your one-line answer here.`;
+    fs.writeFileSync(path.join(kataDir, 'answer.md'), answerContent);
+    console.log('Created: answer.md');
+  }
+
+  if (options.type === 'multi-question') {
+    const answerContent = `# Your Answers
+
+Your answers will be collected through the interactive multi-question interface.`;
     fs.writeFileSync(path.join(kataDir, 'answer.md'), answerContent);
     console.log('Created: answer.md');
   }

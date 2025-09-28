@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -26,6 +26,7 @@ function App() {
   const [autoContinueNotification, setAutoContinueNotification] = useState<AutoContinueNotificationType | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [shortformAnswer, setShortformAnswer] = useState<string | string[]>('')
+  const [multiQuestionAnswers, setMultiQuestionAnswers] = useState<Record<string, string | string[]>>({})
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
@@ -200,6 +201,12 @@ function App() {
   const handleShortformSubmit = useCallback((answer: string | string[]) => {
     setShortformAnswer(answer)
     // Trigger submission after setting the answer
+    setTimeout(() => handleSubmit(), 0)
+  }, [])
+
+  const handleMultiQuestionSubmit = useCallback((answers: Record<string, string | string[]>) => {
+    setMultiQuestionAnswers(answers)
+    // Trigger submission after setting the answers
     setTimeout(() => handleSubmit(), 0)
   }, [])
 
@@ -430,44 +437,73 @@ function App() {
           setAiJudgment(processedJudgment)
         }
       } else if (['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type)) {
-        // Shortform kata evaluation
-        const submission = {
-          kataType: kataDetails.type as any,
-          answer: shortformAnswer,
-          multipleChoiceConfig: kataDetails.multipleChoiceConfig,
-          shortformConfig: kataDetails.shortformConfig,
-          oneLinerConfig: kataDetails.oneLinerConfig
-        }
+        // Check if this is a multi-question kata
+        if (kataDetails.multiQuestionConfig) {
+          // Multi-question shortform kata evaluation
+          const submission = {
+            kataType: kataDetails.type as any,
+            answers: multiQuestionAnswers,
+            multiQuestionConfig: kataDetails.multiQuestionConfig
+          }
 
-        const validation = shortformEvaluator.validateSubmission(submission)
-        if (!validation.isValid) {
-          setExecutionResults({
-            success: false,
-            output: '',
-            errors: validation.errors.join(', '),
-            testResults: [],
-            duration: 0
+          const result = await shortformEvaluator.evaluateMultiQuestionSubmission(submission)
+          setExecutionResults(result)
+
+          // Save attempt to database
+          await window.electronAPI.saveAttempt({
+            kataId: selectedKata.slug,
+            timestamp: new Date().toISOString(),
+            language: kataDetails.language,
+            status: result.success ? 'passed' : 'failed',
+            score: result.score || 0,
+            durationMs: result.duration,
+            code: JSON.stringify(multiQuestionAnswers)
           })
-          return
-        }
 
-        const result = await shortformEvaluator.evaluateSubmission(submission)
-        setExecutionResults(result)
+          // Handle auto-continue if enabled and kata passed
+          if (autoContinueEnabled && result.success) {
+            await triggerAutoContinue(result)
+          }
+        } else {
+          // Legacy single-question shortform kata evaluation
+          const submission = {
+            kataType: kataDetails.type as any,
+            answer: shortformAnswer,
+            multipleChoiceConfig: kataDetails.multipleChoiceConfig,
+            shortformConfig: kataDetails.shortformConfig,
+            oneLinerConfig: kataDetails.oneLinerConfig
+          }
 
-        // Save attempt to database
-        await window.electronAPI.saveAttempt({
-          kataId: selectedKata.slug,
-          timestamp: new Date().toISOString(),
-          language: kataDetails.language,
-          status: result.success ? 'passed' : 'failed',
-          score: result.score || 0,
-          durationMs: result.duration,
-          code: Array.isArray(shortformAnswer) ? shortformAnswer.join(', ') : shortformAnswer
-        })
+          const validation = shortformEvaluator.validateSubmission(submission)
+          if (!validation.isValid) {
+            setExecutionResults({
+              success: false,
+              output: '',
+              errors: validation.errors.join(', '),
+              testResults: [],
+              duration: 0
+            })
+            return
+          }
 
-        // Handle auto-continue if enabled and kata passed
-        if (autoContinueEnabled && result.success) {
-          await triggerAutoContinue(result)
+          const result = await shortformEvaluator.evaluateSubmission(submission)
+          setExecutionResults(result)
+
+          // Save attempt to database
+          await window.electronAPI.saveAttempt({
+            kataId: selectedKata.slug,
+            timestamp: new Date().toISOString(),
+            language: kataDetails.language,
+            status: result.success ? 'passed' : 'failed',
+            score: result.score || 0,
+            durationMs: result.duration,
+            code: Array.isArray(shortformAnswer) ? shortformAnswer.join(', ') : shortformAnswer
+          })
+
+          // Handle auto-continue if enabled and kata passed
+          if (autoContinueEnabled && result.success) {
+            await triggerAutoContinue(result)
+          }
         }
       } else {
         // Code execution for code katas - run both public and hidden tests
@@ -633,14 +669,23 @@ function App() {
                     className="code-editor-panel-container"
                   >
                     {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
-                      <ShortformAnswerPanel
-                        kataType={kataDetails.type as any}
-                        multipleChoiceConfig={kataDetails.multipleChoiceConfig}
-                        shortformConfig={kataDetails.shortformConfig}
-                        oneLinerConfig={kataDetails.oneLinerConfig}
-                        onSubmit={handleShortformSubmit}
-                        isLoading={isExecuting}
-                      />
+                      kataDetails.multiQuestionConfig ? (
+                        <MultiQuestionPanel
+                          kataType={kataDetails.type as any}
+                          multiQuestionConfig={kataDetails.multiQuestionConfig}
+                          onSubmit={handleMultiQuestionSubmit}
+                          isLoading={isExecuting}
+                        />
+                      ) : (
+                        <ShortformAnswerPanel
+                          kataType={kataDetails.type as any}
+                          multipleChoiceConfig={kataDetails.multipleChoiceConfig}
+                          shortformConfig={kataDetails.shortformConfig}
+                          oneLinerConfig={kataDetails.oneLinerConfig}
+                          onSubmit={handleShortformSubmit}
+                          isLoading={isExecuting}
+                        />
+                      )
                     ) : (
                       <CodeEditorPanel
                         language={kataDetails.language}
@@ -693,14 +738,23 @@ function App() {
                     className="code-editor-panel-container"
                   >
                     {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
-                      <ShortformAnswerPanel
-                        kataType={kataDetails.type as any}
-                        multipleChoiceConfig={kataDetails.multipleChoiceConfig}
-                        shortformConfig={kataDetails.shortformConfig}
-                        oneLinerConfig={kataDetails.oneLinerConfig}
-                        onSubmit={handleShortformSubmit}
-                        isLoading={isExecuting}
-                      />
+                      kataDetails.multiQuestionConfig ? (
+                        <MultiQuestionPanel
+                          kataType={kataDetails.type as any}
+                          multiQuestionConfig={kataDetails.multiQuestionConfig}
+                          onSubmit={handleMultiQuestionSubmit}
+                          isLoading={isExecuting}
+                        />
+                      ) : (
+                        <ShortformAnswerPanel
+                          kataType={kataDetails.type as any}
+                          multipleChoiceConfig={kataDetails.multipleChoiceConfig}
+                          shortformConfig={kataDetails.shortformConfig}
+                          oneLinerConfig={kataDetails.oneLinerConfig}
+                          onSubmit={handleShortformSubmit}
+                          isLoading={isExecuting}
+                        />
+                      )
                     ) : (
                       <CodeEditorPanel
                         language={kataDetails.language}

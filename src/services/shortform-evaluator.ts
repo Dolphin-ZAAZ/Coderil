@@ -2,6 +2,8 @@ import type {
   MultipleChoiceConfig, 
   ShortformConfig, 
   OneLinerConfig,
+  MultiQuestionConfig,
+  ShortformQuestion,
   ExecutionResult,
   TestResult,
   KataType
@@ -13,6 +15,12 @@ export interface ShortformSubmission {
   multipleChoiceConfig?: MultipleChoiceConfig
   shortformConfig?: ShortformConfig
   oneLinerConfig?: OneLinerConfig
+}
+
+export interface MultiQuestionSubmission {
+  kataType: KataType
+  answers: Record<string, string | string[]>
+  multiQuestionConfig: MultiQuestionConfig
 }
 
 export interface ShortformEvaluationResult {
@@ -32,6 +40,145 @@ export class ShortformEvaluatorService {
       ShortformEvaluatorService.instance = new ShortformEvaluatorService()
     }
     return ShortformEvaluatorService.instance
+  }
+
+  /**
+   * Evaluates a multi-question shortform kata submission
+   */
+  public async evaluateMultiQuestionSubmission(submission: MultiQuestionSubmission): Promise<ExecutionResult> {
+    const startTime = Date.now()
+    
+    try {
+      const results: TestResult[] = []
+      let totalScore = 0
+      let totalPossibleScore = 0
+      let correctAnswers = 0
+
+      for (const question of submission.multiQuestionConfig.questions) {
+        const answer = submission.answers[question.id]
+        const questionPoints = question.points || 1
+        totalPossibleScore += questionPoints
+
+        const questionResult = this.evaluateQuestion(question, answer)
+        
+        results.push({
+          name: `Question: ${question.question.substring(0, 50)}...`,
+          passed: questionResult.correct,
+          message: questionResult.feedback,
+          expected: questionResult.expectedAnswer,
+          actual: questionResult.actualAnswer
+        })
+
+        if (questionResult.correct) {
+          totalScore += questionPoints
+          correctAnswers++
+        }
+      }
+
+      const scorePercentage = totalPossibleScore > 0 ? (totalScore / totalPossibleScore) * 100 : 0
+      const passingScore = submission.multiQuestionConfig.passingScore || 70
+      const passed = scorePercentage >= passingScore
+
+      const duration = Date.now() - startTime
+      
+      const overallFeedback = `Answered ${correctAnswers} out of ${submission.multiQuestionConfig.questions.length} questions correctly. ` +
+        `Score: ${scorePercentage.toFixed(1)}% (${totalScore}/${totalPossibleScore} points). ` +
+        `${passed ? 'Passed!' : `Need ${passingScore}% to pass.`}`
+
+      return {
+        success: passed,
+        output: overallFeedback,
+        errors: passed ? '' : 'Score below passing threshold',
+        testResults: results,
+        score: scorePercentage,
+        duration
+      }
+    } catch (error) {
+      const duration = Date.now() - startTime
+      
+      return {
+        success: false,
+        output: '',
+        errors: `Evaluation error: ${error}`,
+        testResults: [{
+          name: 'Multi-Question Evaluation',
+          passed: false,
+          message: `Failed to evaluate: ${error}`,
+          expected: 'Valid answers',
+          actual: submission.answers
+        }],
+        score: 0,
+        duration
+      }
+    }
+  }
+
+  /**
+   * Evaluates a single question within a multi-question kata
+   */
+  private evaluateQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
+    if (question.type === 'multiple-choice') {
+      return this.evaluateMultipleChoiceQuestion(question, answer)
+    } else {
+      return this.evaluateTextQuestion(question, answer)
+    }
+  }
+
+  /**
+   * Evaluates a multiple choice question
+   */
+  private evaluateMultipleChoiceQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
+    const userAnswers = Array.isArray(answer) ? answer : [answer]
+    const correctAnswers = (question.correctAnswers || []).sort()
+    const userAnswersSorted = userAnswers.sort()
+
+    const isCorrect = this.arraysEqual(correctAnswers, userAnswersSorted)
+    const score = isCorrect ? 100 : 0
+
+    let feedback: string
+    if (isCorrect) {
+      feedback = 'Correct!'
+    } else {
+      const correctOptions = question.options?.filter(opt => correctAnswers.includes(opt.id)).map(opt => opt.text) || []
+      feedback = `Incorrect. The correct answer${correctOptions.length > 1 ? 's are' : ' is'}: ${correctOptions.join(', ')}`
+    }
+
+    return {
+      correct: isCorrect,
+      score,
+      feedback,
+      explanation: question.explanation,
+      expectedAnswer: correctAnswers.join(', '),
+      actualAnswer: userAnswers
+    }
+  }
+
+  /**
+   * Evaluates a text-based question (shortform or one-liner)
+   */
+  private evaluateTextQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
+    const userAnswer = Array.isArray(answer) ? answer[0] : answer
+    const isCorrect = this.checkTextAnswer(userAnswer, question.expectedAnswer, question.acceptableAnswers, question.caseSensitive)
+    const score = isCorrect ? 100 : 0
+
+    let feedback: string
+    if (isCorrect) {
+      feedback = 'Correct!'
+    } else {
+      feedback = `Incorrect. Expected: ${question.expectedAnswer || 'See acceptable answers'}`
+      if (question.acceptableAnswers && question.acceptableAnswers.length > 0) {
+        feedback += ` (Acceptable answers: ${question.acceptableAnswers.join(', ')})`
+      }
+    }
+
+    return {
+      correct: isCorrect,
+      score,
+      feedback,
+      explanation: question.explanation,
+      expectedAnswer: question.expectedAnswer,
+      actualAnswer: userAnswer
+    }
   }
 
   /**

@@ -11,6 +11,7 @@ import {
   MultipleChoiceConfig,
   ShortformConfig,
   OneLinerConfig,
+  MultiQuestionConfig,
   ValidationResult,
   validateKataMetadata,
   validateKataStructure,
@@ -18,6 +19,7 @@ import {
   validateMultipleChoiceConfig,
   validateShortformConfig,
   validateOneLinerConfig,
+  validateMultiQuestionConfig,
   FileSystemError
 } from '@/types';
 import { errorHandler } from './error-handler';
@@ -430,12 +432,21 @@ export class KataManagerService {
    * Loads shortform configurations for shortform kata types
    */
   private async loadShortformConfigs(kataPath: string, metadata: KataMetadata): Promise<{
+    multiQuestionConfig?: MultiQuestionConfig,
     multipleChoiceConfig?: MultipleChoiceConfig,
     shortformConfig?: ShortformConfig,
     oneLinerConfig?: OneLinerConfig
   }> {
     const configs: any = {};
 
+    // First try to load multi-question config (new format)
+    const multiQuestionConfig = await this.loadMultiQuestionConfig(kataPath, metadata);
+    if (multiQuestionConfig) {
+      configs.multiQuestionConfig = multiQuestionConfig;
+      return configs; // If multi-question config exists, use it exclusively
+    }
+
+    // Fall back to legacy single-question configs
     if (metadata.type === 'multiple-choice') {
       configs.multipleChoiceConfig = await this.loadMultipleChoiceConfig(kataPath, metadata);
     } else if (metadata.type === 'shortform') {
@@ -445,6 +456,43 @@ export class KataManagerService {
     }
 
     return configs;
+  }
+
+  /**
+   * Loads multi-question configuration (new format)
+   */
+  private async loadMultiQuestionConfig(kataPath: string, metadata: KataMetadata): Promise<MultiQuestionConfig | undefined> {
+    // Check if config is embedded in metadata
+    if ((metadata as any).multiQuestion) {
+      const validation = validateMultiQuestionConfig((metadata as any).multiQuestion);
+      if (validation.isValid) {
+        return (metadata as any).multiQuestion as MultiQuestionConfig;
+      } else {
+        console.warn(`Invalid multi-question config in ${kataPath}:`, validation.errors);
+      }
+    }
+
+    // Try to load from separate config.yaml file
+    const configPath = path.join(kataPath, 'config.yaml');
+    if (fs.existsSync(configPath)) {
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const config = yaml.load(configContent) as any;
+        
+        if (config.multiQuestion) {
+          const validation = validateMultiQuestionConfig(config.multiQuestion);
+          if (validation.isValid) {
+            return config.multiQuestion as MultiQuestionConfig;
+          } else {
+            console.warn(`Invalid multi-question config in ${kataPath}:`, validation.errors);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to parse config.yaml in ${kataPath}:`, error);
+      }
+    }
+
+    return undefined;
   }
 
   /**

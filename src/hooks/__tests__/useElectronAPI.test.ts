@@ -21,7 +21,7 @@ describe('useElectronAPI', () => {
 
   it('should detect when electronAPI is available immediately', async () => {
     // Set up electronAPI before rendering hook
-    ;(window as any).electronAPI = mockElectronAPI
+    (window as any).electronAPI = mockElectronAPI
 
     const { result } = renderHook(() => useElectronAPI())
 
@@ -53,7 +53,7 @@ describe('useElectronAPI', () => {
 
     // Add electronAPI after a short delay
     setTimeout(() => {
-      ;(window as any).electronAPI = mockElectronAPI
+      (window as any).electronAPI = mockElectronAPI
     }, 500)
 
     await waitFor(() => {

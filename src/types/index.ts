@@ -40,7 +40,9 @@ export interface KataDetails extends Kata {
   testConfig: TestConfig
   rubric?: Rubric
   solutionCode?: string // Optional solution code
-  // Shortform kata configurations
+  // Multi-question shortform configuration
+  multiQuestionConfig?: MultiQuestionConfig
+  // Legacy single-question configurations (for backward compatibility)
   multipleChoiceConfig?: MultipleChoiceConfig
   shortformConfig?: ShortformConfig
   oneLinerConfig?: OneLinerConfig
@@ -68,6 +70,34 @@ export interface MultipleChoiceOption {
   correct?: boolean
 }
 
+export interface ShortformQuestion {
+  id: string
+  type: 'shortform' | 'multiple-choice' | 'one-liner'
+  question: string
+  // For shortform and one-liner questions
+  expectedAnswer?: string
+  acceptableAnswers?: string[]
+  caseSensitive?: boolean
+  maxLength?: number
+  // For multiple choice questions
+  options?: MultipleChoiceOption[]
+  correctAnswers?: string[]
+  allowMultiple?: boolean
+  // Common
+  explanation?: string
+  points?: number // Optional scoring weight
+}
+
+export interface MultiQuestionConfig {
+  title?: string
+  description?: string
+  questions: ShortformQuestion[]
+  passingScore?: number // Percentage needed to pass (default: 70)
+  showProgressBar?: boolean
+  allowReview?: boolean // Allow reviewing answers before final submission
+}
+
+// Legacy single-question configs (for backward compatibility)
 export interface MultipleChoiceConfig {
   question: string
   options: MultipleChoiceOption[]
@@ -462,6 +492,58 @@ export const validateOneLinerConfig = (config: any): ValidationResult => {
 
   if (!config.expectedAnswer && !config.acceptableAnswers) {
     warnings.push('no expected answer or acceptable answers specified - consider adding for validation')
+  }
+
+  return { isValid: errors.length === 0, errors, warnings }
+}
+
+export const validateMultiQuestionConfig = (config: any): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!config || typeof config !== 'object') {
+    errors.push('multi-question config must be an object')
+    return { isValid: false, errors, warnings }
+  }
+
+  if (!Array.isArray(config.questions) || config.questions.length === 0) {
+    errors.push('questions must be a non-empty array')
+    return { isValid: false, errors, warnings }
+  }
+
+  config.questions.forEach((question: any, index: number) => {
+    if (!question.id || typeof question.id !== 'string') {
+      errors.push(`question ${index} must have a string id`)
+    }
+
+    if (!question.type || !['shortform', 'multiple-choice', 'one-liner'].includes(question.type)) {
+      errors.push(`question ${index} must have a valid type (shortform, multiple-choice, one-liner)`)
+    }
+
+    if (!question.question || typeof question.question !== 'string') {
+      errors.push(`question ${index} must have a string question`)
+    }
+
+    if (question.type === 'multiple-choice') {
+      if (!Array.isArray(question.options) || question.options.length < 2) {
+        errors.push(`question ${index} (multiple-choice) must have at least 2 options`)
+      }
+      if (!Array.isArray(question.correctAnswers) || question.correctAnswers.length === 0) {
+        errors.push(`question ${index} (multiple-choice) must have correctAnswers`)
+      }
+    } else {
+      if (!question.expectedAnswer && !question.acceptableAnswers) {
+        warnings.push(`question ${index} has no expected answer or acceptable answers`)
+      }
+    }
+
+    if (question.points && (typeof question.points !== 'number' || question.points <= 0)) {
+      errors.push(`question ${index} points must be a positive number if specified`)
+    }
+  })
+
+  if (config.passingScore && (typeof config.passingScore !== 'number' || config.passingScore < 0 || config.passingScore > 100)) {
+    errors.push('passingScore must be a number between 0 and 100')
   }
 
   return { isValid: errors.length === 0, errors, warnings }

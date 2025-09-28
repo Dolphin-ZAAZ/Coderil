@@ -1,0 +1,56 @@
+slug: sample-multi-question
+title: Sample Multi-Question Quiz
+language: none
+type: multi-question
+difficulty: medium
+tags: [quiz, multi-question, concept]
+entry: answer.md
+test:
+  kind: none
+  file: none
+timeout_ms: 0
+
+multiQuestion:
+  title: "Sample Multi-Question Quiz"
+  description: "A comprehensive quiz combining different question types to test your knowledge."
+  passingScore: 75
+  showProgressBar: true
+  allowReview: true
+  questions:
+    - id: "q1"
+      type: "multiple-choice"
+      question: "Which of the following are programming paradigms?"
+      allowMultiple: true
+      options:
+        - id: "a"
+          text: "Object-Oriented Programming"
+        - id: "b"
+          text: "Functional Programming"
+        - id: "c"
+          text: "Procedural Programming"
+        - id: "d"
+          text: "Database Programming"
+      correctAnswers: ["a", "b", "c"]
+      points: 2
+      explanation: "Object-Oriented, Functional, and Procedural are all programming paradigms. Database Programming is a domain, not a paradigm."
+    
+    - id: "q2"
+      type: "shortform"
+      question: "What does API stand for?"
+      expectedAnswer: "Application Programming Interface"
+      acceptableAnswers: 
+        - "Application Programming Interface"
+        - "Application Program Interface"
+      caseSensitive: false
+      maxLength: 100
+      points: 1
+      explanation: "API stands for Application Programming Interface, which defines how software components should interact."
+    
+    - id: "q3"
+      type: "one-liner"
+      question: "Complete this statement: Git is a _____ control system."
+      expectedAnswer: "version"
+      acceptableAnswers: ["version", "source", "revision"]
+      caseSensitive: false
+      points: 1
+      explanation: "Git is a distributed version control system used to track changes in source code."
