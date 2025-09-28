@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('judge-explanation', explanation, rubric, topic, context),
   judgeTemplate: (templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) =>
     ipcRenderer.invoke('judge-template', templateContent, rubric, expectedStructure, templateType, context),
+  judgeCodebase: (analysis: string, rubric: any, codebaseDescription?: string, context?: string) =>
+    ipcRenderer.invoke('judge-codebase', analysis, rubric, codebaseDescription, context),
   
   // File operations
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
@@ -98,6 +100,7 @@ interface ElectronAPI {
   getKataStats: (kataId: string) => Promise<any>
   judgeExplanation: (explanation: string, rubric: any, topic?: string, context?: string) => Promise<any>
   judgeTemplate: (templateContent: string, rubric: any, expectedStructure?: any, templateType?: string, context?: string) => Promise<any>
+  judgeCodebase: (analysis: string, rubric: any, codebaseDescription?: string, context?: string) => Promise<any>
   openFileDialog: () => Promise<string[]>
   saveFileDialog: (defaultName?: string) => Promise<string | null>
   checkDependencies: () => Promise<any>

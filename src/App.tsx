@@ -436,6 +436,49 @@ function App() {
           const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
           setAiJudgment(processedJudgment)
         }
+      } else if (kataDetails.type === 'codebase') {
+        // AI judging for codebase analysis katas
+        if (kataDetails.rubric) {
+          const aiJudgment = await window.electronAPI.judgeCodebase(
+            currentCode,
+            kataDetails.rubric,
+            kataDetails.title,
+            kataDetails.statement
+          )
+          
+          // Process AI judgment through scoring service
+          const processedJudgment = scoringService.processAIJudgment(aiJudgment)
+          setAiJudgment(processedJudgment)
+          
+          // Save attempt to database
+          await window.electronAPI.saveAttempt({
+            kataId: selectedKata.slug,
+            timestamp: new Date().toISOString(),
+            language: kataDetails.language,
+            status: aiJudgment.pass ? 'passed' : 'failed',
+            score: aiJudgment.totalScore,
+            durationMs: 0, // AI judging doesn't have execution time
+            code: currentCode
+          })
+          
+          // Progress display will refresh automatically
+          
+          // Handle auto-continue if enabled and kata passed
+          if (autoContinueEnabled && aiJudgment.pass) {
+            await triggerAutoContinue(aiJudgment)
+          }
+        } else {
+          // Fallback for codebase katas without rubric
+          const mockAiJudgment: AIJudgment = {
+            scores: { comprehension: 70, structure: 75, detail: 65, accuracy: 80, insights: 60 },
+            feedback: 'No rubric found for this codebase analysis kata.',
+            pass: false,
+            totalScore: 70
+          }
+          
+          const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
+          setAiJudgment(processedJudgment)
+        }
       } else if (['shortform', 'one-liner', 'multi-question'].includes(kataDetails.type)) {
         // Check if this is a multi-question kata
         if (kataDetails.multiQuestionConfig) {
@@ -675,6 +718,8 @@ function App() {
                           multiQuestionConfig={kataDetails.multiQuestionConfig}
                           onSubmit={handleMultiQuestionSubmit}
                           isLoading={isExecuting}
+                          solutionData={kataDetails.multiQuestionSolution}
+                          onShowSolution={() => console.log('Solution viewed for multi-question kata:', selectedKata.slug)}
                         />
                       ) : (
                         <ShortformAnswerPanel
@@ -743,6 +788,8 @@ function App() {
                           multiQuestionConfig={kataDetails.multiQuestionConfig}
                           onSubmit={handleMultiQuestionSubmit}
                           isLoading={isExecuting}
+                          solutionData={kataDetails.multiQuestionSolution}
+                          onShowSolution={() => console.log('Solution viewed for multi-question kata:', selectedKata.slug)}
                         />
                       ) : (
                         <ShortformAnswerPanel

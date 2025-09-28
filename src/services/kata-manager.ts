@@ -12,6 +12,7 @@ import {
   ShortformConfig,
   OneLinerConfig,
   MultiQuestionConfig,
+  MultiQuestionSolution,
   ValidationResult,
   validateKataMetadata,
   validateKataStructure,
@@ -158,6 +159,7 @@ export class KataManagerService {
       const rubric = await this.loadRubric(kata.path, metadata);
       const solutionCode = await this.loadSolutionCode(kata.path, metadata);
       const shortformConfigs = await this.loadShortformConfigs(kata.path, metadata);
+      const multiQuestionSolution = await this.loadMultiQuestionSolution(kata.path, metadata, shortformConfigs.multiQuestionConfig);
 
       return {
         ...kata,
@@ -167,6 +169,7 @@ export class KataManagerService {
         testConfig,
         rubric,
         solutionCode,
+        multiQuestionSolution,
         ...shortformConfigs
       };
     } catch (error) {
@@ -366,8 +369,8 @@ export class KataManagerService {
    * Loads rubric for explanation, template, and shortform katas
    */
   private async loadRubric(kataPath: string, metadata: KataMetadata): Promise<Rubric | undefined> {
-    // Only explanation, template, and shortform katas have rubrics
-    if (!['explain', 'template', 'shortform', 'one-liner', 'multi-question'].includes(metadata.type)) {
+    // Only explanation, template, codebase, and shortform katas have rubrics
+    if (!['explain', 'template', 'codebase', 'shortform', 'one-liner', 'multi-question'].includes(metadata.type)) {
       return undefined;
     }
 
@@ -409,6 +412,9 @@ export class KataManagerService {
         break;
       case 'template':
         keys = ['structure', 'completeness', 'best_practices'];
+        break;
+      case 'codebase':
+        keys = ['comprehension', 'structure', 'detail', 'accuracy', 'insights'];
         break;
       case 'shortform':
       case 'one-liner':
@@ -891,5 +897,74 @@ export class KataManagerService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Loads multi-question solution data
+   */
+  private async loadMultiQuestionSolution(
+    kataPath: string, 
+    _metadata: KataMetadata, 
+    multiQuestionConfig?: MultiQuestionConfig
+  ): Promise<MultiQuestionSolution | undefined> {
+    if (!multiQuestionConfig) {
+      return undefined;
+    }
+
+    const solution: MultiQuestionSolution = {};
+
+    // Load individual question solutions for code questions
+    const questionSolutions: Record<string, string> = {};
+    
+    for (const question of multiQuestionConfig.questions) {
+      if (question.type === 'code' && question.language) {
+        // Try to find solution file for this specific question
+        const solutionPatterns = [
+          `solution_${question.id}.${this.getFileExtension(question.language)}`,
+          `${question.id}_solution.${this.getFileExtension(question.language)}`,
+          `solutions/${question.id}.${this.getFileExtension(question.language)}`,
+          `solution.${this.getFileExtension(question.language)}` // Fallback for single solution file
+        ];
+
+        for (const pattern of solutionPatterns) {
+          const solutionPath = path.join(kataPath, pattern);
+          if (fs.existsSync(solutionPath)) {
+            try {
+              questionSolutions[question.id] = fs.readFileSync(solutionPath, 'utf8');
+              break;
+            } catch (error) {
+              console.warn(`Failed to read solution file ${solutionPath}:`, error);
+            }
+          }
+        }
+      }
+    }
+
+    if (Object.keys(questionSolutions).length > 0) {
+      solution.questionSolutions = questionSolutions;
+    }
+
+    // Try to load overall explanation
+    const explanationPatterns = [
+      'solution.md',
+      'solutions.md',
+      'explanation.md',
+      'answers.md'
+    ];
+
+    for (const pattern of explanationPatterns) {
+      const explanationPath = path.join(kataPath, pattern);
+      if (fs.existsSync(explanationPath)) {
+        try {
+          solution.overallExplanation = fs.readFileSync(explanationPath, 'utf8');
+          break;
+        } catch (error) {
+          console.warn(`Failed to read explanation file ${explanationPath}:`, error);
+        }
+      }
+    }
+
+    // Return solution object if it has any content
+    return Object.keys(solution).length > 0 ? solution : undefined;
   }
 }

@@ -323,6 +323,130 @@ describe('AIJudgeService', () => {
     })
   })
 
+  describe('judgeCodebase', () => {
+    const codebaseRubric: Rubric = {
+      keys: ['comprehension', 'structure', 'detail', 'accuracy', 'insights'],
+      threshold: {
+        min_total: 70,
+        min_correctness: 60
+      }
+    }
+
+    it('should successfully judge a codebase analysis', async () => {
+      const mockResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              scores: {
+                comprehension: 85,
+                structure: 80,
+                detail: 75,
+                accuracy: 90,
+                insights: 70
+              },
+              feedback: 'Excellent analysis showing deep understanding of the codebase architecture',
+              reasoning: 'Student demonstrates clear comprehension and provides valuable insights'
+            })
+          }
+        }]
+      }
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      })
+
+      const result = await service.judgeCodebase({
+        analysis: 'Detailed analysis of the web server codebase...',
+        rubric: codebaseRubric,
+        codebaseDescription: 'Simple HTTP Server',
+        context: 'Python web server with routing and static file serving'
+      })
+
+      expect(result).toEqual({
+        scores: {
+          comprehension: 85,
+          structure: 80,
+          detail: 75,
+          accuracy: 90,
+          insights: 70
+        },
+        feedback: 'Excellent analysis showing deep understanding of the codebase architecture',
+        pass: true,
+        totalScore: 80
+      })
+    })
+
+    it('should fail when comprehension score is below minimum', async () => {
+      const mockResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              scores: {
+                comprehension: 50, // Below min_correctness threshold
+                structure: 80,
+                detail: 75,
+                accuracy: 70,
+                insights: 65
+              },
+              feedback: 'Analysis shows limited understanding of the codebase',
+              reasoning: 'Needs better comprehension of core concepts'
+            })
+          }
+        }]
+      }
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse)
+      })
+
+      const result = await service.judgeCodebase({
+        analysis: 'Superficial analysis missing key insights',
+        rubric: codebaseRubric
+      })
+
+      expect(result.pass).toBe(false)
+      expect(result.totalScore).toBe(68)
+    })
+
+    it('should generate appropriate codebase analysis prompt', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                scores: { comprehension: 80, structure: 75, detail: 70, accuracy: 85, insights: 65 },
+                feedback: 'Good analysis',
+                reasoning: 'Meets requirements'
+              })
+            }
+          }]
+        })
+      })
+
+      await service.judgeCodebase({
+        analysis: 'Analysis content',
+        rubric: codebaseRubric,
+        codebaseDescription: 'Web Server Application',
+        context: 'Educational codebase analysis exercise'
+      })
+
+      const callArgs = mockFetch.mock.calls[0][1]
+      const requestBody = JSON.parse(callArgs.body)
+      const prompt = requestBody.messages[0].content
+
+      expect(prompt).toContain('Codebase being analyzed: Web Server Application')
+      expect(prompt).toContain('Additional context: Educational codebase analysis exercise')
+      expect(prompt).toContain('comprehension')
+      expect(prompt).toContain('structure')
+      expect(prompt).toContain('detail')
+      expect(prompt).toContain('accuracy')
+      expect(prompt).toContain('insights')
+    })
+  })
+
   describe('parseAIResponse', () => {
     it('should parse clean JSON response', () => {
       const response = JSON.stringify({

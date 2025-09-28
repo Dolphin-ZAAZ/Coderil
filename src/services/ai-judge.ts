@@ -24,6 +24,13 @@ export interface TemplateJudgeRequest {
     context?: string
 }
 
+export interface CodebaseJudgeRequest {
+    analysis: string
+    rubric: Rubric
+    codebaseDescription?: string
+    context?: string
+}
+
 export interface AIResponse {
     scores: Record<string, number>
     feedback: string
@@ -137,6 +144,69 @@ export class AIJudgeService {
     }
 
     /**
+     * Judge a codebase analysis kata submission
+     */
+    async judgeCodebase(request: CodebaseJudgeRequest): Promise<AIJudgment> {
+        const prompt = this.generateCodebasePrompt(request)
+
+        for (let attempt = 1; attempt <= this.config.maxRetries!; attempt++) {
+            try {
+                const response = await this.callAI(prompt)
+                const aiResponse = this.parseAIResponse(response)
+                return this.processJudgment(aiResponse, request.rubric)
+            } catch (error) {
+                const aiError = error as AIServiceError;
+                
+                // Handle specific error types
+                if (aiError.statusCode === 401) {
+                    const authError = this.createAIServiceError('AI service authentication failed - check API key', false);
+                    authError.statusCode = 401;
+                    errorHandler.handleAIServiceError(authError, {
+                        operation: 'judge_codebase',
+                        attempt,
+                        maxRetries: this.config.maxRetries
+                    });
+                    throw authError;
+                }
+                
+                if (aiError.statusCode === 429) {
+                    const rateLimitError = this.createAIServiceError('AI service rate limit exceeded', true);
+                    rateLimitError.statusCode = 429;
+                    rateLimitError.retryable = true;
+                    errorHandler.handleAIServiceError(rateLimitError, {
+                        operation: 'judge_codebase',
+                        attempt,
+                        maxRetries: this.config.maxRetries
+                    });
+                }
+                
+                if (attempt === this.config.maxRetries) {
+                    const finalError = this.createAIServiceError(
+                        `Failed to get valid AI response after ${this.config.maxRetries} attempts: ${error}`,
+                        true
+                    );
+                    errorHandler.handleAIServiceError(finalError, {
+                        operation: 'judge_codebase',
+                        totalAttempts: this.config.maxRetries,
+                        lastError: error
+                    });
+                    throw finalError;
+                }
+                
+                // Wait before retry (exponential backoff)
+                await this.delay(Math.pow(2, attempt - 1) * 1000)
+            }
+        }
+
+        const unexpectedError = this.createAIServiceError('Unexpected error in judgeCodebase', false);
+        errorHandler.handleAIServiceError(unexpectedError, {
+            operation: 'judge_codebase',
+            context: 'unexpected_error'
+        });
+        throw unexpectedError;
+    }
+
+    /**
      * Generate prompt for explanation judging
      */
     private generateExplanationPrompt(request: ExplanationJudgeRequest): string {
@@ -211,6 +281,46 @@ You must respond with valid JSON in exactly this format:
   },
   "feedback": "<detailed constructive feedback explaining the scores and areas for improvement>",
   "reasoning": "<brief explanation of your overall assessment and whether this is 'close enough' to be useful>"
+}
+
+Important: Respond ONLY with the JSON object, no additional text.`
+    }
+
+    /**
+     * Generate prompt for codebase analysis judging
+     */
+    private generateCodebasePrompt(request: CodebaseJudgeRequest): string {
+        const { analysis, rubric, codebaseDescription, context } = request
+
+        const codebaseContext = codebaseDescription ? `Codebase being analyzed: ${codebaseDescription}\n\n` : ''
+        const additionalContext = context ? `Additional context: ${context}\n\n` : ''
+
+        return `You are an expert software engineer evaluating a student's codebase analysis. Please provide a detailed assessment of their understanding and explanation of the code.
+
+${codebaseContext}${additionalContext}CODEBASE ANALYSIS TO EVALUATE:
+${analysis}
+
+EVALUATION CRITERIA:
+Please score the analysis on each of these criteria (0-100 scale):
+${rubric.keys.map(key => `- ${key}: Evaluate the ${key} of the codebase analysis`).join('\n')}
+
+ASSESSMENT GUIDELINES:
+- Comprehension: Does the student demonstrate clear understanding of what the code does?
+- Structure: Is the analysis well-organized and easy to follow?
+- Detail: Does the analysis provide appropriate technical depth without being overwhelming?
+- Accuracy: Are the technical explanations correct and precise?
+- Insights: Does the student provide thoughtful observations and improvement suggestions?
+
+Look for evidence that the student has carefully read and understood the codebase, can explain how components interact, and demonstrates good software engineering judgment.
+
+RESPONSE FORMAT:
+You must respond with valid JSON in exactly this format:
+{
+  "scores": {
+    ${rubric.keys.map(key => `"${key}": <score_0_to_100>`).join(',\n    ')}
+  },
+  "feedback": "<detailed constructive feedback explaining the scores and areas for improvement>",
+  "reasoning": "<brief explanation of your overall assessment of the student's codebase analysis>"
 }
 
 Important: Respond ONLY with the JSON object, no additional text.`
@@ -336,6 +446,11 @@ Important: Respond ONLY with the JSON object, no additional text.`
         // Check minimum correctness if specified
         if (rubric.threshold.min_correctness && scores.correctness) {
             pass = pass && scores.correctness >= rubric.threshold.min_correctness
+        }
+
+        // Check minimum comprehension if specified (for codebase katas)
+        if (rubric.threshold.min_comprehension && scores.comprehension) {
+            pass = pass && scores.comprehension >= rubric.threshold.min_comprehension
         }
 
         // Check any other specific minimums in threshold

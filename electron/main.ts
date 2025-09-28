@@ -382,6 +382,54 @@ ipcMain.handle('judge-template', async (_event, templateContent: string, rubric:
   }
 })
 
+// AI judging for codebase katas
+ipcMain.handle('judge-codebase', async (_event, analysis: string, rubric: any, codebaseDescription?: string, context?: string) => {
+  try {
+    const { DatabaseService } = await import('../src/services/database')
+    const dbService = await DatabaseService.getInstance()
+    const settings = dbService.getAllSettings()
+    const apiKey = settings.openai_api_key || process.env.OPENAI_API_KEY
+    
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please set it in Settings or as OPENAI_API_KEY environment variable.')
+    }
+    
+    const { AIJudgeService } = await import('../src/services/ai-judge')
+    const aiJudge = new AIJudgeService({
+      apiKey,
+      // Use default OpenAI settings
+    })
+    
+    const judgment = await aiJudge.judgeCodebase({
+      analysis,
+      rubric,
+      codebaseDescription,
+      context
+    })
+    
+    console.log('Codebase judgment completed:', {
+      pass: judgment.pass,
+      totalScore: judgment.totalScore,
+      scores: judgment.scores
+    })
+    
+    return judgment
+  } catch (error: any) {
+    console.error('Failed to judge codebase analysis:', error)
+    
+    // Return a structured error response that matches AIJudgment interface
+    return {
+      scores: rubric.keys.reduce((acc: any, key: string) => {
+        acc[key] = 0
+        return acc
+      }, {}),
+      feedback: `AI judging failed: ${error.message}. Please check your OpenAI API configuration and try again.`,
+      pass: false,
+      totalScore: 0
+    }
+  }
+})
+
 ipcMain.handle('get-settings', async () => {
   try {
     const { DatabaseService } = await import('../src/services/database')

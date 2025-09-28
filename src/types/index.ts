@@ -1,7 +1,7 @@
 // Core data models for the Code Kata App
 
 export type Language = 'py' | 'js' | 'ts' | 'cpp' | 'none'
-export type KataType = 'code' | 'explain' | 'template' | 'codebase' | 'shortform' | 'one-liner' | 'multi-question'
+export type KataType = 'code' | 'explain' | 'template' | 'codebase' | 'shortform' | 'one-liner' | 'multi-question' | 'multiple-choice'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type TestKind = 'programmatic' | 'io' | 'none'
 
@@ -42,6 +42,7 @@ export interface KataDetails extends Kata {
   solutionCode?: string // Optional solution code
   // Multi-question shortform configuration
   multiQuestionConfig?: MultiQuestionConfig
+  multiQuestionSolution?: MultiQuestionSolution
   // Legacy single-question configurations (for backward compatibility)
   shortformConfig?: ShortformConfig
   oneLinerConfig?: OneLinerConfig
@@ -59,15 +60,20 @@ export interface Rubric {
   threshold: {
     min_total: number
     min_correctness: number
+    min_comprehension?: number
   }
 }
 
 // Shortform kata specific types
 
+export interface MultipleChoiceOption {
+  id: string
+  text: string
+}
 
 export interface ShortformQuestion {
   id: string
-  type: 'shortform' | 'one-liner' | 'explanation' | 'code'
+  type: 'shortform' | 'one-liner' | 'explanation' | 'code' | 'multiple-choice'
   question: string
   // For shortform and one-liner questions
   expectedAnswer?: string
@@ -99,6 +105,11 @@ export interface MultiQuestionConfig {
   allowReview?: boolean // Allow reviewing answers before final submission
 }
 
+export interface MultiQuestionSolution {
+  questionSolutions?: Record<string, string> // For code questions, maps question ID to solution code
+  overallExplanation?: string // Optional overall explanation
+}
+
 // Legacy single-question configs (for backward compatibility)
 
 export interface ShortformConfig {
@@ -115,6 +126,14 @@ export interface OneLinerConfig {
   expectedAnswer?: string
   acceptableAnswers?: string[]
   caseSensitive?: boolean
+  explanation?: string
+}
+
+export interface MultipleChoiceConfig {
+  question: string
+  options: MultipleChoiceOption[]
+  correctAnswers: string[]
+  allowMultiple?: boolean
   explanation?: string
 }
 
@@ -405,6 +424,9 @@ export const validateRubric = (rubric: any): ValidationResult => {
     }
     if (typeof rubric.threshold.min_correctness !== 'number' || rubric.threshold.min_correctness < 0) {
       errors.push('rubric.threshold.min_correctness must be a non-negative number')
+    }
+    if (rubric.threshold.min_comprehension !== undefined && (typeof rubric.threshold.min_comprehension !== 'number' || rubric.threshold.min_comprehension < 0)) {
+      errors.push('rubric.threshold.min_comprehension must be a non-negative number')
     }
   }
 

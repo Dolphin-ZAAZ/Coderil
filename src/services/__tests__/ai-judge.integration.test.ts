@@ -327,4 +327,76 @@ That's it.
       })).rejects.toThrow(/AI API request failed/)
     }, 15000)
   })
+
+  describe('judgeCodebase integration', () => {
+    it('should judge a real codebase analysis', async () => {
+      const rubric: Rubric = {
+        keys: ['comprehension', 'structure', 'detail', 'accuracy', 'insights'],
+        threshold: {
+          min_total: 70,
+          min_correctness: 60
+        }
+      }
+
+      const analysis = `
+# Simple Web Server Analysis
+
+## Project Overview
+This codebase implements a simple HTTP server in Python using the built-in http.server module. The server provides basic routing capabilities, API endpoints, and static file serving functionality.
+
+## Architecture & Structure
+The code is organized into a single main file (server.py) with a custom request handler class that extends BaseHTTPRequestHandler. The structure includes:
+- Main server class: SimpleHTTPRequestHandler
+- Route handling methods for different endpoints
+- Static file serving functionality
+- JSON API endpoints
+
+## Key Components
+1. **SimpleHTTPRequestHandler**: Main request handler class
+2. **Route methods**: do_GET() and do_POST() for handling different HTTP methods
+3. **API endpoints**: /api/status, /api/time, /api/echo
+4. **Static file serving**: Handles CSS, JS, and other static assets
+
+## Data Flow
+1. Client sends HTTP request
+2. Server routes request based on URL path
+3. Appropriate handler method processes the request
+4. Response is generated and sent back to client
+
+## Potential Improvements
+- Add proper logging
+- Implement error handling middleware
+- Add request validation
+- Consider using a proper web framework for larger applications
+      `
+
+      const result = await service.judgeCodebase({
+        analysis,
+        rubric,
+        codebaseDescription: 'Simple HTTP Server',
+        context: 'Educational Python web server example'
+      })
+
+      expect(result).toBeDefined()
+      expect(result.scores).toBeDefined()
+      expect(result.feedback).toBeDefined()
+      expect(typeof result.pass).toBe('boolean')
+      expect(typeof result.totalScore).toBe('number')
+      
+      // Check that all rubric keys have scores
+      rubric.keys.forEach(key => {
+        expect(result.scores[key]).toBeDefined()
+        expect(typeof result.scores[key]).toBe('number')
+        expect(result.scores[key]).toBeGreaterThanOrEqual(0)
+        expect(result.scores[key]).toBeLessThanOrEqual(100)
+      })
+
+      console.log('Codebase Analysis Judgment Result:', {
+        pass: result.pass,
+        totalScore: result.totalScore,
+        scores: result.scores,
+        feedback: result.feedback.substring(0, 200) + '...'
+      })
+    }, 15000)
+  })
 })

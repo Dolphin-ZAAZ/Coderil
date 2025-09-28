@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { 
   MultiQuestionConfig, 
+  MultiQuestionSolution,
   ShortformQuestion,
   KataType 
 } from '@/types'
@@ -11,16 +12,21 @@ interface MultiQuestionPanelProps {
   multiQuestionConfig: MultiQuestionConfig
   onSubmit: (answers: Record<string, string | string[]>) => void
   isLoading?: boolean
+  solutionData?: MultiQuestionSolution
+  onShowSolution?: () => void
 }
 
 export function MultiQuestionPanel({
   multiQuestionConfig,
   onSubmit,
-  isLoading = false
+  isLoading = false,
+  solutionData,
+  onShowSolution
 }: MultiQuestionPanelProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [showReview, setShowReview] = useState(false)
+  const [showingSolution, setShowingSolution] = useState(false)
 
   const questions = multiQuestionConfig.questions
   const currentQuestion = questions[currentQuestionIndex]
@@ -84,6 +90,13 @@ export function MultiQuestionPanel({
   const handleFinalSubmit = useCallback(() => {
     onSubmit(answers)
   }, [answers, onSubmit])
+
+  const handleToggleSolution = useCallback(() => {
+    if (!showingSolution && onShowSolution) {
+      onShowSolution()
+    }
+    setShowingSolution(!showingSolution)
+  }, [showingSolution, onShowSolution])
 
   const renderQuestion = (question: ShortformQuestion) => {
     const answer = answers[question.id] || (question.type === 'multiple-choice' ? [] : '')
@@ -204,6 +217,68 @@ export function MultiQuestionPanel({
             </div>
           )}
         </div>
+
+        {showingSolution && solutionData && (
+          <div className="solution-section">
+            <h4>Solution</h4>
+            {question.type === 'multiple-choice' ? (
+              <div className="solution-content">
+                <p><strong>Correct Answer(s):</strong></p>
+                <ul className="correct-answers">
+                  {question.correctAnswers?.map(answerId => {
+                    const option = question.options?.find(opt => opt.id === answerId)
+                    return option ? <li key={answerId}>{option.text}</li> : null
+                  })}
+                </ul>
+                {question.explanation && (
+                  <div className="solution-explanation">
+                    <p><strong>Explanation:</strong></p>
+                    <p>{question.explanation}</p>
+                  </div>
+                )}
+              </div>
+            ) : question.type === 'code' ? (
+              <div className="solution-content">
+                {solutionData.questionSolutions?.[question.id] && (
+                  <div className="code-solution">
+                    <p><strong>Reference Solution:</strong></p>
+                    <pre className="solution-code">
+                      <code>{solutionData.questionSolutions[question.id]}</code>
+                    </pre>
+                  </div>
+                )}
+                {question.explanation && (
+                  <div className="solution-explanation">
+                    <p><strong>Explanation:</strong></p>
+                    <p>{question.explanation}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="solution-content">
+                {question.expectedAnswer && (
+                  <p><strong>Expected Answer:</strong> {question.expectedAnswer}</p>
+                )}
+                {question.acceptableAnswers && question.acceptableAnswers.length > 0 && (
+                  <div>
+                    <p><strong>Acceptable Answers:</strong></p>
+                    <ul>
+                      {question.acceptableAnswers.map((ans, idx) => (
+                        <li key={idx}>{ans}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {question.explanation && (
+                  <div className="solution-explanation">
+                    <p><strong>Explanation:</strong></p>
+                    <p>{question.explanation}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }
@@ -287,9 +362,21 @@ export function MultiQuestionPanel({
   return (
     <div className="multi-question-panel">
       <div className="panel-header">
-        {multiQuestionConfig.title && (
-          <h2 className="panel-title">{multiQuestionConfig.title}</h2>
-        )}
+        <div className="panel-title-row">
+          {multiQuestionConfig.title && (
+            <h2 className="panel-title">{multiQuestionConfig.title}</h2>
+          )}
+          {solutionData && (
+            <button 
+              className={`btn btn-solution ${showingSolution ? 'active' : ''}`}
+              onClick={handleToggleSolution}
+              title={showingSolution ? 'Hide solutions' : 'Show solutions'}
+              disabled={isLoading}
+            >
+              {showingSolution ? 'Hide Solutions' : 'Show Solutions'}
+            </button>
+          )}
+        </div>
         {multiQuestionConfig.description && (
           <p className="panel-description">{multiQuestionConfig.description}</p>
         )}
