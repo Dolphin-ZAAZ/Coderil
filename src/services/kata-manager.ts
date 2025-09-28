@@ -8,10 +8,16 @@ import {
   KataMetadata, 
   TestConfig, 
   Rubric,
+  MultipleChoiceConfig,
+  ShortformConfig,
+  OneLinerConfig,
   ValidationResult,
   validateKataMetadata,
   validateKataStructure,
   validateRubric,
+  validateMultipleChoiceConfig,
+  validateShortformConfig,
+  validateOneLinerConfig,
   FileSystemError
 } from '@/types';
 import { errorHandler } from './error-handler';
@@ -149,6 +155,7 @@ export class KataManagerService {
       const testConfig = this.createTestConfig(metadata);
       const rubric = await this.loadRubric(kata.path, metadata);
       const solutionCode = await this.loadSolutionCode(kata.path, metadata);
+      const shortformConfigs = await this.loadShortformConfigs(kata.path, metadata);
 
       return {
         ...kata,
@@ -157,7 +164,8 @@ export class KataManagerService {
         starterCode,
         testConfig,
         rubric,
-        solutionCode
+        solutionCode,
+        ...shortformConfigs
       };
     } catch (error) {
       const fsError = new Error(`Failed to load kata details for ${slug}: ${error}`) as FileSystemError;
@@ -353,11 +361,11 @@ export class KataManagerService {
   }
 
   /**
-   * Loads rubric for explanation and template katas
+   * Loads rubric for explanation, template, and shortform katas
    */
   private async loadRubric(kataPath: string, metadata: KataMetadata): Promise<Rubric | undefined> {
-    // Only explanation and template katas have rubrics
-    if (metadata.type !== 'explain' && metadata.type !== 'template') {
+    // Only explanation, template, and shortform katas have rubrics
+    if (!['explain', 'template', 'shortform', 'multiple-choice', 'one-liner'].includes(metadata.type)) {
       return undefined;
     }
 
@@ -389,17 +397,165 @@ export class KataManagerService {
       }
     }
 
-    // Return default rubric for explanation/template katas
+    // Return default rubric based on kata type
     console.warn(`No valid rubric found for ${metadata.type} kata in ${kataPath}, using default`);
+    
+    let keys: string[];
+    switch (metadata.type) {
+      case 'explain':
+        keys = ['correctness', 'clarity', 'completeness'];
+        break;
+      case 'template':
+        keys = ['structure', 'completeness', 'best_practices'];
+        break;
+      case 'shortform':
+      case 'multiple-choice':
+      case 'one-liner':
+        keys = ['correctness', 'clarity'];
+        break;
+      default:
+        keys = ['correctness'];
+    }
+    
     return {
-      keys: metadata.type === 'explain' 
-        ? ['correctness', 'clarity', 'completeness'] 
-        : ['structure', 'completeness', 'best_practices'],
+      keys,
       threshold: {
         min_total: 60,
         min_correctness: 50
       }
     };
+  }
+
+  /**
+   * Loads shortform configurations for shortform kata types
+   */
+  private async loadShortformConfigs(kataPath: string, metadata: KataMetadata): Promise<{
+    multipleChoiceConfig?: MultipleChoiceConfig,
+    shortformConfig?: ShortformConfig,
+    oneLinerConfig?: OneLinerConfig
+  }> {
+    const configs: any = {};
+
+    if (metadata.type === 'multiple-choice') {
+      configs.multipleChoiceConfig = await this.loadMultipleChoiceConfig(kataPath, metadata);
+    } else if (metadata.type === 'shortform') {
+      configs.shortformConfig = await this.loadShortformConfig(kataPath, metadata);
+    } else if (metadata.type === 'one-liner') {
+      configs.oneLinerConfig = await this.loadOneLinerConfig(kataPath, metadata);
+    }
+
+    return configs;
+  }
+
+  /**
+   * Loads multiple choice configuration
+   */
+  private async loadMultipleChoiceConfig(kataPath: string, metadata: KataMetadata): Promise<MultipleChoiceConfig | undefined> {
+    // Check if config is embedded in metadata
+    if ((metadata as any).multipleChoice) {
+      const validation = validateMultipleChoiceConfig((metadata as any).multipleChoice);
+      if (validation.isValid) {
+        return (metadata as any).multipleChoice as MultipleChoiceConfig;
+      } else {
+        console.warn(`Invalid multiple choice config in ${kataPath}:`, validation.errors);
+      }
+    }
+
+    // Try to load from separate config.yaml file
+    const configPath = path.join(kataPath, 'config.yaml');
+    if (fs.existsSync(configPath)) {
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const config = yaml.load(configContent) as any;
+        
+        if (config.multipleChoice) {
+          const validation = validateMultipleChoiceConfig(config.multipleChoice);
+          if (validation.isValid) {
+            return config.multipleChoice as MultipleChoiceConfig;
+          } else {
+            console.warn(`Invalid multiple choice config in ${kataPath}:`, validation.errors);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to parse config.yaml in ${kataPath}:`, error);
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Loads shortform configuration
+   */
+  private async loadShortformConfig(kataPath: string, metadata: KataMetadata): Promise<ShortformConfig | undefined> {
+    // Check if config is embedded in metadata
+    if ((metadata as any).shortform) {
+      const validation = validateShortformConfig((metadata as any).shortform);
+      if (validation.isValid) {
+        return (metadata as any).shortform as ShortformConfig;
+      } else {
+        console.warn(`Invalid shortform config in ${kataPath}:`, validation.errors);
+      }
+    }
+
+    // Try to load from separate config.yaml file
+    const configPath = path.join(kataPath, 'config.yaml');
+    if (fs.existsSync(configPath)) {
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const config = yaml.load(configContent) as any;
+        
+        if (config.shortform) {
+          const validation = validateShortformConfig(config.shortform);
+          if (validation.isValid) {
+            return config.shortform as ShortformConfig;
+          } else {
+            console.warn(`Invalid shortform config in ${kataPath}:`, validation.errors);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to parse config.yaml in ${kataPath}:`, error);
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Loads one-liner configuration
+   */
+  private async loadOneLinerConfig(kataPath: string, metadata: KataMetadata): Promise<OneLinerConfig | undefined> {
+    // Check if config is embedded in metadata
+    if ((metadata as any).oneLiner) {
+      const validation = validateOneLinerConfig((metadata as any).oneLiner);
+      if (validation.isValid) {
+        return (metadata as any).oneLiner as OneLinerConfig;
+      } else {
+        console.warn(`Invalid one-liner config in ${kataPath}:`, validation.errors);
+      }
+    }
+
+    // Try to load from separate config.yaml file
+    const configPath = path.join(kataPath, 'config.yaml');
+    if (fs.existsSync(configPath)) {
+      try {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const config = yaml.load(configContent) as any;
+        
+        if (config.oneLiner) {
+          const validation = validateOneLinerConfig(config.oneLiner);
+          if (validation.isValid) {
+            return config.oneLiner as OneLinerConfig;
+          } else {
+            console.warn(`Invalid one-liner config in ${kataPath}:`, validation.errors);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to parse config.yaml in ${kataPath}:`, error);
+      }
+    }
+
+    return undefined;
   }
 
   /**

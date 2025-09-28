@@ -1,7 +1,7 @@
 // Core data models for the Code Kata App
 
-export type Language = 'py' | 'js' | 'ts' | 'cpp'
-export type KataType = 'code' | 'explain' | 'template' | 'codebase'
+export type Language = 'py' | 'js' | 'ts' | 'cpp' | 'none'
+export type KataType = 'code' | 'explain' | 'template' | 'codebase' | 'shortform' | 'multiple-choice' | 'one-liner'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type TestKind = 'programmatic' | 'io' | 'none'
 
@@ -40,6 +40,10 @@ export interface KataDetails extends Kata {
   testConfig: TestConfig
   rubric?: Rubric
   solutionCode?: string // Optional solution code
+  // Shortform kata configurations
+  multipleChoiceConfig?: MultipleChoiceConfig
+  shortformConfig?: ShortformConfig
+  oneLinerConfig?: OneLinerConfig
 }
 
 export interface TestConfig {
@@ -55,6 +59,38 @@ export interface Rubric {
     min_total: number
     min_correctness: number
   }
+}
+
+// Shortform kata specific types
+export interface MultipleChoiceOption {
+  id: string
+  text: string
+  correct?: boolean
+}
+
+export interface MultipleChoiceConfig {
+  question: string
+  options: MultipleChoiceOption[]
+  correctAnswers: string[] // IDs of correct options
+  allowMultiple?: boolean
+  explanation?: string
+}
+
+export interface ShortformConfig {
+  question: string
+  expectedAnswer?: string
+  acceptableAnswers?: string[]
+  caseSensitive?: boolean
+  maxLength?: number
+  explanation?: string
+}
+
+export interface OneLinerConfig {
+  question: string
+  expectedAnswer?: string
+  acceptableAnswers?: string[]
+  caseSensitive?: boolean
+  explanation?: string
 }
 
 export interface ExecutionResult {
@@ -168,11 +204,11 @@ export interface DatabaseError extends Error {
 
 // Validation functions
 export const validateLanguage = (language: string): language is Language => {
-  return ['py', 'js', 'ts', 'cpp'].includes(language)
+  return ['py', 'js', 'ts', 'cpp', 'none'].includes(language)
 }
 
 export const validateKataType = (type: string): type is KataType => {
-  return ['code', 'explain', 'template', 'codebase'].includes(type)
+  return ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(type)
 }
 
 export const validateDifficulty = (difficulty: string): difficulty is Difficulty => {
@@ -197,11 +233,11 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
   }
 
   if (!metadata.language || !validateLanguage(metadata.language)) {
-    errors.push('language is required and must be one of: py, js, ts, cpp')
+    errors.push('language is required and must be one of: py, js, ts, cpp, none')
   }
 
   if (!metadata.type || !validateKataType(metadata.type)) {
-    errors.push('type is required and must be one of: code, explain, template, codebase')
+    errors.push('type is required and must be one of: code, explain, template, codebase, shortform, multiple-choice, one-liner')
   }
 
   if (!metadata.difficulty || !validateDifficulty(metadata.difficulty)) {
@@ -231,8 +267,8 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
     errors.push('timeout_ms is required and must be a non-negative number')
   }
 
-  // For explanation and codebase katas, timeout_ms can be 0 since no code execution is needed
-  if (metadata.type !== 'explain' && metadata.type !== 'codebase' && metadata.timeout_ms === 0) {
+  // For explanation, codebase, and shortform katas, timeout_ms can be 0 since no code execution is needed
+  if (!['explain', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(metadata.type) && metadata.timeout_ms === 0) {
     errors.push('timeout_ms must be greater than 0 for code and template katas')
   }
 
@@ -352,6 +388,83 @@ export const validateRubric = (rubric: any): ValidationResult => {
     errors,
     warnings: []
   }
+}
+
+export const validateMultipleChoiceConfig = (config: any): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!config || typeof config !== 'object') {
+    errors.push('multiple choice config must be an object')
+    return { isValid: false, errors, warnings }
+  }
+
+  if (!config.question || typeof config.question !== 'string') {
+    errors.push('question is required and must be a string')
+  }
+
+  if (!Array.isArray(config.options) || config.options.length < 2) {
+    errors.push('options must be an array with at least 2 items')
+  } else {
+    config.options.forEach((option: any, index: number) => {
+      if (!option.id || typeof option.id !== 'string') {
+        errors.push(`option ${index} must have a string id`)
+      }
+      if (!option.text || typeof option.text !== 'string') {
+        errors.push(`option ${index} must have a string text`)
+      }
+    })
+  }
+
+  if (!Array.isArray(config.correctAnswers) || config.correctAnswers.length === 0) {
+    errors.push('correctAnswers must be a non-empty array')
+  }
+
+  return { isValid: errors.length === 0, errors, warnings }
+}
+
+export const validateShortformConfig = (config: any): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!config || typeof config !== 'object') {
+    errors.push('shortform config must be an object')
+    return { isValid: false, errors, warnings }
+  }
+
+  if (!config.question || typeof config.question !== 'string') {
+    errors.push('question is required and must be a string')
+  }
+
+  if (config.maxLength && (typeof config.maxLength !== 'number' || config.maxLength < 1)) {
+    errors.push('maxLength must be a positive number if specified')
+  }
+
+  if (!config.expectedAnswer && !config.acceptableAnswers) {
+    warnings.push('no expected answer or acceptable answers specified - consider adding for validation')
+  }
+
+  return { isValid: errors.length === 0, errors, warnings }
+}
+
+export const validateOneLinerConfig = (config: any): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!config || typeof config !== 'object') {
+    errors.push('one-liner config must be an object')
+    return { isValid: false, errors, warnings }
+  }
+
+  if (!config.question || typeof config.question !== 'string') {
+    errors.push('question is required and must be a string')
+  }
+
+  if (!config.expectedAnswer && !config.acceptableAnswers) {
+    warnings.push('no expected answer or acceptable answers specified - consider adding for validation')
+  }
+
+  return { isValid: errors.length === 0, errors, warnings }
 }
 
 // Component prop interfaces

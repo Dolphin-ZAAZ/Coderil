@@ -1,0 +1,23 @@
+slug: sample-shortform
+title: Sample Shortform Question
+language: none
+type: shortform
+difficulty: easy
+tags: [concept, quick]
+entry: answer.md
+test:
+  kind: none
+  file: none
+timeout_ms: 0
+
+# Shortform configuration
+shortform:
+  question: "What is the time complexity of binary search?"
+  expectedAnswer: "O(log n)"
+  acceptableAnswers: 
+    - "O(log n)"
+    - "logarithmic"
+    - "log n"
+  caseSensitive: false
+  maxLength: 100
+  explanation: "Binary search divides the search space in half with each comparison, resulting in O(log n) time complexity."

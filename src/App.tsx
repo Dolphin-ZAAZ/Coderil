@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ErrorNotificationContainer } from '@/components/ErrorNotification'
 import { ScoringService } from '@/services/scoring'
 import { AutoContinueService } from '@/services/auto-continue'
+import { ShortformEvaluatorService } from '@/services/shortform-evaluator'
 import { useMediaQuery, useElectronAPI } from '@/hooks'
 import { useDependencyChecker } from '@/hooks/useDependencyChecker'
 import './App.css'
@@ -24,11 +25,13 @@ function App() {
   const [filters, setFilters] = useState<KataFilters>({})
   const [autoContinueNotification, setAutoContinueNotification] = useState<AutoContinueNotificationType | null>(null)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [shortformAnswer, setShortformAnswer] = useState<string | string[]>('')
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const scoringService = ScoringService.getInstance()
   const autoContinueService = AutoContinueService.getInstance()
+  const shortformEvaluator = ShortformEvaluatorService.getInstance()
   const isMobile = useMediaQuery('(max-width: 768px)')
   const isTablet = useMediaQuery('(max-width: 1200px)')
   const { isAvailable: isElectronAPIAvailable, isLoading: isElectronAPILoading } = useElectronAPI()
@@ -193,6 +196,12 @@ function App() {
       console.error('Failed to update auto-continue setting:', error)
     }
   }
+
+  const handleShortformSubmit = useCallback((answer: string | string[]) => {
+    setShortformAnswer(answer)
+    // Trigger submission after setting the answer
+    setTimeout(() => handleSubmit(), 0)
+  }, [])
 
   const handleRandomKataSelect = async () => {
     if (!selectedKata || !isElectronAPIAvailable) return
@@ -420,6 +429,46 @@ function App() {
           const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
           setAiJudgment(processedJudgment)
         }
+      } else if (['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type)) {
+        // Shortform kata evaluation
+        const submission = {
+          kataType: kataDetails.type as any,
+          answer: shortformAnswer,
+          multipleChoiceConfig: kataDetails.multipleChoiceConfig,
+          shortformConfig: kataDetails.shortformConfig,
+          oneLinerConfig: kataDetails.oneLinerConfig
+        }
+
+        const validation = shortformEvaluator.validateSubmission(submission)
+        if (!validation.isValid) {
+          setExecutionResults({
+            success: false,
+            output: '',
+            errors: validation.errors.join(', '),
+            testResults: [],
+            duration: 0
+          })
+          return
+        }
+
+        const result = await shortformEvaluator.evaluateSubmission(submission)
+        setExecutionResults(result)
+
+        // Save attempt to database
+        await window.electronAPI.saveAttempt({
+          kataId: selectedKata.slug,
+          timestamp: new Date().toISOString(),
+          language: kataDetails.language,
+          status: result.success ? 'passed' : 'failed',
+          score: result.score || 0,
+          durationMs: result.duration,
+          code: Array.isArray(shortformAnswer) ? shortformAnswer.join(', ') : shortformAnswer
+        })
+
+        // Handle auto-continue if enabled and kata passed
+        if (autoContinueEnabled && result.success) {
+          await triggerAutoContinue(result)
+        }
       } else {
         // Code execution for code katas - run both public and hidden tests
         const publicResult = await window.electronAPI.executeCode(
@@ -583,14 +632,25 @@ function App() {
                     maxSize={500}
                     className="code-editor-panel-container"
                   >
-                    <CodeEditorPanel
-                      language={kataDetails.language}
-                      initialCode={currentCode}
-                      onChange={handleCodeChange}
-                      onRun={handleRun}
-                      onSubmit={handleSubmit}
-                      kataId={selectedKata.slug}
-                    />
+                    {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
+                      <ShortformAnswerPanel
+                        kataType={kataDetails.type as any}
+                        multipleChoiceConfig={kataDetails.multipleChoiceConfig}
+                        shortformConfig={kataDetails.shortformConfig}
+                        oneLinerConfig={kataDetails.oneLinerConfig}
+                        onSubmit={handleShortformSubmit}
+                        isLoading={isExecuting}
+                      />
+                    ) : (
+                      <CodeEditorPanel
+                        language={kataDetails.language}
+                        initialCode={currentCode}
+                        onChange={handleCodeChange}
+                        onRun={handleRun}
+                        onSubmit={handleSubmit}
+                        kataId={selectedKata.slug}
+                      />
+                    )}
                   </ResizablePanel>
                   
                   <div className="results-panel-container">
@@ -632,14 +692,25 @@ function App() {
                     maxSize={1000}
                     className="code-editor-panel-container"
                   >
-                    <CodeEditorPanel
-                      language={kataDetails.language}
-                      initialCode={currentCode}
-                      onChange={handleCodeChange}
-                      onRun={handleRun}
-                      onSubmit={handleSubmit}
-                      kataId={selectedKata.slug}
-                    />
+                    {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
+                      <ShortformAnswerPanel
+                        kataType={kataDetails.type as any}
+                        multipleChoiceConfig={kataDetails.multipleChoiceConfig}
+                        shortformConfig={kataDetails.shortformConfig}
+                        oneLinerConfig={kataDetails.oneLinerConfig}
+                        onSubmit={handleShortformSubmit}
+                        isLoading={isExecuting}
+                      />
+                    ) : (
+                      <CodeEditorPanel
+                        language={kataDetails.language}
+                        initialCode={currentCode}
+                        onChange={handleCodeChange}
+                        onRun={handleRun}
+                        onSubmit={handleSubmit}
+                        kataId={selectedKata.slug}
+                      />
+                    )}
                   </ResizablePanel>
                   
                   <div className="results-panel-container">

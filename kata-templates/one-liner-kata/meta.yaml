@@ -1,0 +1,23 @@
+slug: sample-one-liner
+title: Sample One-Liner Question
+language: none
+type: one-liner
+difficulty: easy
+tags: [quick, definition]
+entry: answer.md
+test:
+  kind: none
+  file: none
+timeout_ms: 0
+
+# One-liner configuration
+oneLiner:
+  question: "Complete this sentence: The principle of DRY stands for ___"
+  expectedAnswer: "Don't Repeat Yourself"
+  acceptableAnswers:
+    - "Don't Repeat Yourself"
+    - "Do not Repeat Yourself"
+    - "Don't repeat yourself"
+    - "DRY"
+  caseSensitive: false
+  explanation: "DRY (Don't Repeat Yourself) is a principle of software development aimed at reducing repetition of software patterns."
