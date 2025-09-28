@@ -27,6 +27,9 @@
     "type-check": "tsc --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
+    "test:e2e": "vitest --run src/__tests__/e2e/",
+    "test:integration": "vitest --run src/__tests__/integration/",
+    "test:all": "tsx src/__tests__/test-runner.ts",
     "postinstall": "electron-rebuild"
   },
   "keywords": [
@@ -41,6 +44,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.10.4",
@@ -59,6 +63,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "jsdom": "^27.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vite-plugin-electron": "^0.28.1",

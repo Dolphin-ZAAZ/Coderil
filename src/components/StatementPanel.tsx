@@ -27,28 +27,36 @@ export function StatementPanel({ statement, metadata, solutionCode, onShowSoluti
     // Configure marked for better code highlighting and security
     marked.setOptions({
       breaks: true,
-      gfm: true,
-      highlight: function(code, lang) {
-        // Use highlight.js for syntax highlighting
-        if (lang && hljs.getLanguage(lang)) {
-          try {
-            return hljs.highlight(code, { language: lang }).value
-          } catch (err) {
-            console.warn('Highlight.js error:', err)
-          }
-        }
-        // Fallback to auto-detection
-        try {
-          return hljs.highlightAuto(code).value
-        } catch (err) {
-          console.warn('Highlight.js auto-detection error:', err)
-          return code // Return unhighlighted code as fallback
-        }
-      }
+      gfm: true
     })
     
-    // Force synchronous parsing by casting the result
-    const result = marked(statement)
+    // Parse markdown with custom renderer for code highlighting
+    const renderer = new marked.Renderer()
+    
+    renderer.code = function(token: { text: string; lang?: string; escaped?: boolean }) {
+      const { text: code, lang: language } = token
+      
+      // Use highlight.js for syntax highlighting
+      if (language && hljs.getLanguage(language)) {
+        try {
+          const highlighted = hljs.highlight(code, { language }).value
+          return `<pre><code class="hljs ${language}">${highlighted}</code></pre>`
+        } catch (err) {
+          console.warn('Highlight.js error:', err)
+        }
+      }
+      // Fallback to auto-detection
+      try {
+        const highlighted = hljs.highlightAuto(code).value
+        return `<pre><code class="hljs">${highlighted}</code></pre>`
+      } catch (err) {
+        console.warn('Highlight.js auto-detection error:', err)
+        return `<pre><code>${code}</code></pre>`
+      }
+    }
+    
+    // Parse with custom renderer
+    const result = marked(statement, { renderer })
     return typeof result === 'string' ? result : ''
   }, [statement])
 

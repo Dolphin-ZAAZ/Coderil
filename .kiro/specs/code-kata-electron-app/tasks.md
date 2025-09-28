@@ -258,7 +258,12 @@
   - Add settings persistence to database with user_settings table
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
 
-- [ ] 21. Write end-to-end tests and integration tests
+- [x] 21. Write end-to-end tests and integration tests
+
+
+
+
+
   - Create E2E tests for complete kata workflow (load → edit → run → submit)
   - Add integration tests for AI judge functionality with mock responses
   - Test progress persistence across application restarts
