@@ -1,78 +1,129 @@
-# Project Structure
+---
+inclusion: always
+---
+
+# Project Structure & Architecture Guidelines
 
 ## Directory Organization
 
 ```
 ├── electron/           # Electron main process files
-│   ├── main.ts        # Main process entry point with IPC handlers
-│   └── preload.ts     # Preload script for secure IPC communication
-├── src/               # React renderer process files
-│   ├── components/    # Reusable React components (to be added)
-│   ├── services/      # Service layer for business logic (to be added)
-│   ├── types/         # TypeScript type definitions and validation
-│   ├── App.tsx        # Main App component with kata selection
-│   ├── App.css        # App-specific styles
-│   ├── main.tsx       # React entry point
-│   └── index.css      # Global styles
-├── public/            # Static assets (favicon, etc.)
-├── katas/             # Kata files directory
-├── dist/              # Built renderer files (generated)
-├── dist-electron/     # Built Electron files (generated)
-└── release/           # Packaged applications (generated)
+│   ├── main.ts        # Main process with IPC handlers
+│   └── preload.ts     # Secure IPC bridge
+├── src/               # React renderer process
+│   ├── components/    # UI components with co-located CSS/tests
+│   ├── services/      # Business logic (database, kata-manager, ai-judge, etc.)
+│   ├── hooks/         # Custom React hooks (useElectronAPI, useDependencyChecker)
+│   ├── types/         # Centralized TypeScript definitions
+│   ├── App.tsx        # Main application component
+│   └── main.tsx       # React entry point
+├── katas/             # Individual kata challenges
+├── kata-templates/    # Templates for new kata creation
+├── scripts/           # Build and utility scripts
+└── .kiro/             # Kiro IDE configuration
 ```
 
-## Code Organization Patterns
+## Established Patterns
 
-### Type Definitions
-- All types centralized in `src/types/index.ts`
-- Comprehensive validation functions for runtime type checking
-- Clear separation of core models, API interfaces, and component props
+### Type System
+- **Centralized in `src/types/index.ts`**: Core types like `Kata`, `KataMetadata`, `Language`, `KataType`
+- **Language support**: `'py' | 'js' | 'ts' | 'cpp'`
+- **Kata types**: `'code' | 'explain' | 'template' | 'codebase'`
+- **Test kinds**: `'programmatic' | 'io' | 'none'`
 
-### IPC Communication
-- Main process handlers in `electron/main.ts` with placeholder implementations
-- Preload script provides secure API bridge to renderer
-- All IPC calls use `handle/invoke` pattern for async operations
+### Component Architecture
+- **Barrel exports**: Components exported through `src/components/index.ts`
+- **Co-located CSS**: Each component has matching `.css` file
+- **Test structure**: `__tests__/` subdirectories with `.test.tsx` files
+- **Existing components**: StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, ImportExportPanel, DependencyWarning, AutoContinueNotification
 
-### React Architecture
-- Functional components with hooks
-- State management at component level (no global state library yet)
-- Props interfaces defined in types for all components
+### Service Layer
+- **Core services**: DatabaseService, ProgressService, KataManagerService, AIJudgeService
+- **Specialized services**: code-execution, dependency-checker, auto-continue, error-handler, scoring
+- **Barrel exports**: Services exported through `src/services/index.ts`
 
-### File Naming Conventions
-- React components: PascalCase (e.g., `App.tsx`, `KataSelector.tsx`)
-- TypeScript files: camelCase (e.g., `main.ts`, `preload.ts`)
-- CSS files: match component names (e.g., `App.css`)
-- Configuration files: lowercase with extensions (e.g., `vite.config.ts`)
+### Hook Patterns
+- **Custom hooks**: useMediaQuery, useElectronAPI, useDependencyChecker, useErrorHandler
+- **Barrel exports**: Hooks exported through `src/hooks/index.ts`
 
-## Kata Directory Structure
+## File Naming Conventions
 
-Expected structure for individual katas:
+- **Components**: `ComponentName.tsx` + `ComponentName.css`
+- **Services**: `kebab-case.ts` (e.g., `kata-manager.ts`, `code-execution.ts`)
+- **Hooks**: `useHookName.ts`
+- **Tests**: `ComponentName.test.tsx` or `service-name.test.ts` in `__tests__/`
+
+## Kata Structure Patterns
+
+### Code Katas (JavaScript/TypeScript/Python/C++)
 ```
 katas/kata-name/
-├── meta.yaml          # Kata metadata (required)
-├── statement.md       # Problem description (required)
-├── entry.py           # Starter code file
-├── tests.py           # Public test cases
-└── hidden_tests.py    # Hidden test cases (optional)
+├── meta.yaml          # Required: slug, title, language, type, difficulty
+├── statement.md       # Problem description
+├── entry.{ext}        # Starter code
+├── tests.{ext}        # Public test cases
+├── hidden_tests.{ext} # Additional validation (optional)
+├── solution.{ext}     # Reference solution (optional)
+└── package.json       # For JS/TS katas with dependencies
 ```
 
-## Import Patterns
+### Explanation Katas
+```
+katas/kata-name/
+├── meta.yaml          # type: "explain"
+├── statement.md       # Explanation prompt
+├── explanation.md     # Template file
+├── solution.md        # Reference explanation
+└── rubric.yaml        # AI judging criteria (optional)
+```
 
-- Use `@/` alias for src imports: `import { Kata } from '@/types'`
-- Relative imports for same-directory files
-- External dependencies imported before internal modules
-- Type-only imports use `import type` syntax when possible
+### Template Katas
+```
+katas/kata-name/
+├── meta.yaml          # type: "template"
+├── statement.md       # Template requirements
+├── rubric.yaml        # Validation criteria
+├── solution.{ext}     # Reference implementation
+└── template/          # Directory structure template
+```
 
-## Component Structure
+### Codebase Katas
+```
+katas/kata-name/
+├── meta.yaml          # type: "codebase"
+├── statement.md       # Analysis prompt
+├── entry.py           # Codebase to analyze
+├── rubric.yaml        # Analysis criteria
+└── solution_analysis.md # Reference analysis
+```
 
-Components should follow this pattern:
-1. Imports (external, then internal)
-2. Interface definitions (if not in types file)
-3. Component function with proper TypeScript typing
-4. Export statement
+## Import Organization
 
-## Error Handling
+```typescript
+// 1. External dependencies
+import React from 'react'
+import { Monaco } from '@monaco-editor/react'
 
-- Custom error types defined in types file
-- Validation functions return structured results with errors/warnings
-- IPC handlers include try/catch with proper error logging
+// 2. Internal with @/ alias
+import { Kata, KataType } from '@/types'
+import { KataManagerService } from '@/services'
+
+// 3. Relative imports
+import './Component.css'
+```
+
+## Error Handling Standards
+
+- **ErrorBoundary component**: Wraps components that might fail
+- **ErrorNotification component**: User-facing error display
+- **useErrorHandler hook**: Centralized error management
+- **error-handler service**: Structured error processing
+- **Structured errors**: Custom error types in types file
+
+## Testing Architecture
+
+- **Co-located tests**: `__tests__/` directories next to implementation
+- **Service testing**: Mock external dependencies and IPC calls
+- **Component testing**: Test user interactions and state changes
+- **Integration testing**: Test service interactions with real data
+- **Test setup**: Centralized in `src/test-setup.ts`
