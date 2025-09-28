@@ -200,7 +200,7 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
   }
 
   if (!metadata.type || !validateKataType(metadata.type)) {
-    errors.push('type is required and must be one of: code, explain, template')
+    errors.push('type is required and must be one of: code, explain, template, codebase')
   }
 
   if (!metadata.difficulty || !validateDifficulty(metadata.difficulty)) {
@@ -229,9 +229,9 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
   if (typeof metadata.timeout_ms !== 'number' || metadata.timeout_ms < 0) {
     errors.push('timeout_ms is required and must be a non-negative number')
   }
-  
-  // For explanation katas, timeout_ms can be 0 since no code execution is needed
-  if (metadata.type !== 'explain' && metadata.timeout_ms === 0) {
+
+  // For explanation and codebase katas, timeout_ms can be 0 since no code execution is needed
+  if (metadata.type !== 'explain' && metadata.type !== 'codebase' && metadata.timeout_ms === 0) {
     errors.push('timeout_ms must be greater than 0 for code and template katas')
   }
 
@@ -263,7 +263,7 @@ export const validateKataStructure = (_kataPath: string, files: string[]): Valid
 
   // Required files
   const requiredFiles = ['meta.yaml', 'statement.md']
-  
+
   for (const file of requiredFiles) {
     if (!files.includes(file)) {
       errors.push(`Missing required file: ${file}`)
@@ -272,7 +272,7 @@ export const validateKataStructure = (_kataPath: string, files: string[]): Valid
 
   // Check for starter code files
   const codeExtensions = ['.py', '.js', '.ts', '.cpp', '.c', '.h']
-  const hasCodeFiles = files.some(file => 
+  const hasCodeFiles = files.some(file =>
     codeExtensions.some(ext => file.endsWith(ext))
   )
 
@@ -281,7 +281,7 @@ export const validateKataStructure = (_kataPath: string, files: string[]): Valid
   }
 
   // Check for test files
-  const testFiles = files.filter(file => 
+  const testFiles = files.filter(file =>
     file.includes('test') || file.includes('spec')
   )
 
@@ -414,9 +414,9 @@ export interface AppError {
   stack?: string
 }
 
-export type ErrorType = 
+export type ErrorType =
   | 'FILE_SYSTEM_ERROR'
-  | 'EXECUTION_ERROR' 
+  | 'EXECUTION_ERROR'
   | 'AI_SERVICE_ERROR'
   | 'DATABASE_ERROR'
   | 'NETWORK_ERROR'
