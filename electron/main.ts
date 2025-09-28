@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
+import OpenAI from 'openai'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -820,5 +821,108 @@ ipcMain.handle('save-file-dialog', async (_event, defaultName?: string) => {
   } catch (error: any) {
     console.error('Failed to open save dialog:', error)
     return null
+  }
+})
+
+// AI Configuration IPC handlers
+ipcMain.handle('get-ai-config', async () => {
+  try {
+    const { AIConfigService } = await import('../src/services/ai-config')
+    const aiConfigService = AIConfigService.getInstance()
+    const config = await aiConfigService.getConfig()
+    console.log('Retrieved AI configuration')
+    return config
+  } catch (error: any) {
+    console.error('Failed to get AI config:', error)
+    // Return default config on error
+    const { AIConfigService } = await import('../src/services/ai-config')
+    const aiConfigService = AIConfigService.getInstance()
+    return aiConfigService.getDefaultConfig()
+  }
+})
+
+ipcMain.handle('save-ai-config', async (_event, config: any) => {
+  try {
+    const { AIConfigService } = await import('../src/services/ai-config')
+    const aiConfigService = AIConfigService.getInstance()
+    
+    // Validate config before saving
+    const validation = aiConfigService.validateConfig(config)
+    if (!validation.isValid) {
+      throw new Error(`Invalid configuration: ${validation.errors.join(', ')}`)
+    }
+    
+    await aiConfigService.saveConfig(config)
+    console.log('AI configuration saved successfully')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Failed to save AI config:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('test-openai-connection', async (_event, apiKey?: string) => {
+  try {
+    console.log('Testing OpenAI connection...')
+    
+    let keyToTest = apiKey
+    if (!keyToTest) {
+      // Get key from config if not provided
+      const { AIConfigService } = await import('../src/services/ai-config')
+      const aiConfigService = AIConfigService.getInstance()
+      const config = await aiConfigService.getConfig()
+      keyToTest = config.openaiApiKey
+    }
+    
+    if (!keyToTest || keyToTest.trim().length === 0) {
+      return { success: false, error: 'No API key provided' }
+    }
+    
+    // Create OpenAI client with the key
+    const openai = new OpenAI({
+      apiKey: keyToTest
+    })
+    
+    // Make a simple API call to test the connection
+    const response = await openai.models.list()
+    
+    if (response.data && response.data.length > 0) {
+      console.log('OpenAI connection test successful')
+      return { success: true, models: response.data.map(model => model.id) }
+    } else {
+      return { success: false, error: 'No models returned from API' }
+    }
+  } catch (error: any) {
+    console.error('OpenAI connection test failed:', error)
+    return { 
+      success: false, 
+      error: error.message || 'Connection test failed'
+    }
+  }
+})
+
+ipcMain.handle('get-available-models', async () => {
+  try {
+    const { AIConfigService } = await import('../src/services/ai-config')
+    const aiConfigService = AIConfigService.getInstance()
+    const models = aiConfigService.getAvailableModels()
+    console.log('Retrieved available models:', models.length)
+    return models
+  } catch (error: any) {
+    console.error('Failed to get available models:', error)
+    return ['gpt-4.1-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+  }
+})
+
+ipcMain.handle('validate-ai-config', async (_event, config: any) => {
+  try {
+    const { AIConfigService } = await import('../src/services/ai-config')
+    const aiConfigService = AIConfigService.getInstance()
+    const validation = aiConfigService.validateConfig(config)
+    console.log('AI config validation:', validation.isValid ? 'passed' : 'failed')
+    return validation
+  } catch (error: any) {
+    console.error('Failed to validate AI config:', error)
+    return { isValid: false, errors: ['Validation failed'] }
   }
 })

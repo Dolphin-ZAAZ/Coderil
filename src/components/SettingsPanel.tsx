@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { UserSettings } from '@/types'
+import { UserSettings, AIGenerationConfig } from '@/types'
 import './SettingsPanel.css'
 
 interface SettingsPanelProps {
@@ -15,6 +15,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     autoSaveInterval: 1000,
     openaiApiKey: ''
   })
+  const [aiConfig, setAiConfig] = useState<AIGenerationConfig>({
+    openaiApiKey: '',
+    model: 'gpt-4.1-mini',
+    maxTokens: 4000,
+    temperature: 0.7,
+    retryAttempts: 3,
+    timeoutMs: 30000
+  })
+  const [availableModels, setAvailableModels] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
@@ -30,8 +39,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setIsLoading(true)
     try {
       if (window.electronAPI) {
-        const loadedSettings = await window.electronAPI.getSettings()
+        const [loadedSettings, loadedAiConfig, models] = await Promise.all([
+          window.electronAPI.getSettings(),
+          window.electronAPI.getAiConfig(),
+          window.electronAPI.getAvailableModels()
+        ])
         setSettings(loadedSettings)
+        setAiConfig(loadedAiConfig)
+        setAvailableModels(models)
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -46,7 +61,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     
     try {
       if (window.electronAPI) {
-        await window.electronAPI.saveSettings(settings)
+        await Promise.all([
+          window.electronAPI.saveSettings(settings),
+          window.electronAPI.saveAiConfig(aiConfig)
+        ])
         setSaveMessage('Settings saved successfully!')
         setTimeout(() => setSaveMessage(''), 3000)
       }
@@ -66,8 +84,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }))
   }
 
+  const handleAiConfigChange = (key: keyof AIGenerationConfig, value: any) => {
+    setAiConfig(prev => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
   const testApiKey = async () => {
-    if (!settings.openaiApiKey?.trim()) {
+    if (!aiConfig.openaiApiKey?.trim()) {
       setSaveMessage('Please enter an API key first.')
       setTimeout(() => setSaveMessage(''), 3000)
       return
@@ -78,11 +103,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     
     try {
       if (window.electronAPI) {
-        const isValid = await window.electronAPI.testOpenAIKey(settings.openaiApiKey)
-        if (isValid) {
+        const result = await window.electronAPI.testOpenAIConnection(aiConfig.openaiApiKey)
+        if (result.success) {
           setSaveMessage('API key is valid!')
         } else {
-          setSaveMessage('API key is invalid. Please check your key.')
+          setSaveMessage(`API key test failed: ${result.error}`)
         }
       }
     } catch (error) {
@@ -178,8 +203,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     <input
                       id="openai-key"
                       type={showApiKey ? "text" : "password"}
-                      value={settings.openaiApiKey || ''}
-                      onChange={(e) => handleSettingChange('openaiApiKey', e.target.value)}
+                      value={aiConfig.openaiApiKey || ''}
+                      onChange={(e) => handleAiConfigChange('openaiApiKey', e.target.value)}
                       placeholder="sk-..."
                       className="api-key-input"
                     />
@@ -195,20 +220,100 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       type="button"
                       className="test-key-button"
                       onClick={testApiKey}
-                      disabled={isSaving || !settings.openaiApiKey?.trim()}
+                      disabled={isSaving || !aiConfig.openaiApiKey?.trim()}
                     >
                       Test
                     </button>
                   </div>
                   <p className="setting-description">
-                    Required for AI-powered judging of explanation and template katas. 
+                    Required for AI-powered judging and kata generation. 
                     Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform</a>.
                   </p>
-                  {!settings.openaiApiKey?.trim() && (
+                  {!aiConfig.openaiApiKey?.trim() && (
                     <p className="setting-warning">
-                      ⚠️ Without an API key, explanation and template katas will not work properly.
+                      ⚠️ Without an API key, AI features including kata generation will not work.
                     </p>
                   )}
+                </div>
+
+                <div className="setting-item">
+                  <label htmlFor="ai-model">AI Model</label>
+                  <select
+                    id="ai-model"
+                    value={aiConfig.model}
+                    onChange={(e) => handleAiConfigChange('model', e.target.value)}
+                  >
+                    {availableModels.map(model => (
+                      <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
+                  <p className="setting-description">
+                    Choose the AI model for kata generation and judging. GPT-4.1-mini is recommended for best results.
+                  </p>
+                </div>
+
+                <div className="setting-item">
+                  <label htmlFor="max-tokens">Max Tokens</label>
+                  <input
+                    id="max-tokens"
+                    type="number"
+                    min="100"
+                    max="8000"
+                    step="100"
+                    value={aiConfig.maxTokens}
+                    onChange={(e) => handleAiConfigChange('maxTokens', parseInt(e.target.value))}
+                  />
+                  <p className="setting-description">
+                    Maximum number of tokens for AI responses. Higher values allow longer responses but cost more.
+                  </p>
+                </div>
+
+                <div className="setting-item">
+                  <label htmlFor="temperature">Temperature</label>
+                  <input
+                    id="temperature"
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={aiConfig.temperature}
+                    onChange={(e) => handleAiConfigChange('temperature', parseFloat(e.target.value))}
+                  />
+                  <p className="setting-description">
+                    Controls randomness in AI responses. Lower values (0.1-0.3) for more focused output, higher values (0.7-1.0) for more creative output.
+                  </p>
+                </div>
+
+                <div className="setting-item">
+                  <label htmlFor="retry-attempts">Retry Attempts</label>
+                  <input
+                    id="retry-attempts"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={aiConfig.retryAttempts}
+                    onChange={(e) => handleAiConfigChange('retryAttempts', parseInt(e.target.value))}
+                  />
+                  <p className="setting-description">
+                    Number of times to retry failed API calls before giving up.
+                  </p>
+                </div>
+
+                <div className="setting-item">
+                  <label htmlFor="timeout">Timeout</label>
+                  <input
+                    id="timeout"
+                    type="number"
+                    min="5000"
+                    max="120000"
+                    step="5000"
+                    value={aiConfig.timeoutMs}
+                    onChange={(e) => handleAiConfigChange('timeoutMs', parseInt(e.target.value))}
+                  />
+                  <span className="unit">ms</span>
+                  <p className="setting-description">
+                    Maximum time to wait for AI responses before timing out.
+                  </p>
                 </div>
               </div>
             </>

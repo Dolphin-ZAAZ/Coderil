@@ -73,6 +73,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRandomKata: (currentKataId: string, filters: any) => ipcRenderer.invoke('get-random-kata', currentKataId, filters),
   getAutoContinueEnabled: () => ipcRenderer.invoke('get-auto-continue-enabled'),
   setAutoContinueEnabled: (enabled: boolean) => ipcRenderer.invoke('set-auto-continue-enabled', enabled),
+  
+  // AI Configuration
+  getAiConfig: () => ipcRenderer.invoke('get-ai-config'),
+  saveAiConfig: (config: any) => ipcRenderer.invoke('save-ai-config', config),
+  testOpenAIConnection: (apiKey?: string) => ipcRenderer.invoke('test-openai-connection', apiKey),
+  getAvailableModels: () => ipcRenderer.invoke('get-available-models'),
+  validateAiConfig: (config: any) => ipcRenderer.invoke('validate-ai-config', config),
 })
 
 console.log('Preload script completed successfully')
@@ -111,6 +118,11 @@ interface ElectronAPI {
   getRandomKata: (currentKataId: string, filters: any) => Promise<any>
   getAutoContinueEnabled: () => Promise<boolean>
   setAutoContinueEnabled: (enabled: boolean) => Promise<void>
+  getAiConfig: () => Promise<any>
+  saveAiConfig: (config: any) => Promise<{ success: boolean, error?: string }>
+  testOpenAIConnection: (apiKey?: string) => Promise<{ success: boolean, error?: string, models?: string[] }>
+  getAvailableModels: () => Promise<string[]>
+  validateAiConfig: (config: any) => Promise<{ isValid: boolean, errors: string[] }>
 }
 
 declare global {
