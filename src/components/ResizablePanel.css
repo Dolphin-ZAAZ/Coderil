@@ -1,6 +1,7 @@
 .resizable-panel {
   position: relative;
   overflow: hidden;
+  border-radius: 0;
 }
 
 .resizable-panel.horizontal {

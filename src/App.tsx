@@ -36,6 +36,25 @@ function App() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const isTablet = useMediaQuery('(max-width: 1200px)')
   const { isAvailable: isElectronAPIAvailable, isLoading: isElectronAPILoading } = useElectronAPI()
+
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    setIsSidebarCollapsed(isMobile)
+  }, [isMobile])
+
+  // Trigger submission when shortform answer is set
+  useEffect(() => {
+    if (shortformAnswer && selectedKata && kataDetails && ['shortform', 'one-liner'].includes(kataDetails.type)) {
+      handleSubmit()
+    }
+  }, [shortformAnswer, selectedKata, kataDetails])
+
+  // Trigger submission when multi-question answers are set
+  useEffect(() => {
+    if (Object.keys(multiQuestionAnswers).length > 0 && selectedKata && kataDetails && kataDetails.type === 'multi-question') {
+      handleSubmit()
+    }
+  }, [multiQuestionAnswers, selectedKata, kataDetails])
   const { 
     dependencies, 
     shouldShowWarning, 
@@ -200,14 +219,12 @@ function App() {
 
   const handleShortformSubmit = useCallback((answer: string | string[]) => {
     setShortformAnswer(answer)
-    // Trigger submission after setting the answer
-    setTimeout(() => handleSubmit(), 0)
+    // Submission will be triggered by useEffect when shortformAnswer changes
   }, [])
 
   const handleMultiQuestionSubmit = useCallback((answers: Record<string, string | string[]>) => {
     setMultiQuestionAnswers(answers)
-    // Trigger submission after setting the answers
-    setTimeout(() => handleSubmit(), 0)
+    // Submission will be triggered by useEffect when multiQuestionAnswers changes
   }, [])
 
   const handleRandomKataSelect = async () => {
@@ -617,14 +634,6 @@ function App() {
             )}
           </div>
           <div className="header-controls">
-            <label className="auto-continue-toggle">
-              <input
-                type="checkbox"
-                checked={autoContinueEnabled}
-                onChange={handleAutoContinueToggle}
-              />
-              <span className="toggle-text">Auto-continue</span>
-            </label>
             <button 
               className="settings-button"
               onClick={() => setIsSettingsOpen(true)}
@@ -680,6 +689,8 @@ function App() {
             onRandomKataSelect={handleRandomKataSelect}
             filters={filters}
             onFilterChange={setFilters}
+            autoContinueEnabled={autoContinueEnabled}
+            onAutoContinueToggle={handleAutoContinueToggle}
           />
         </div>
 
@@ -761,9 +772,9 @@ function App() {
                 <>
                   <ResizablePanel
                     direction="horizontal"
-                    initialSize={300}
-                    minSize={200}
-                    maxSize={600}
+                    initialSize={350}
+                    minSize={250}
+                    maxSize={500}
                     className="statement-panel-container"
                   >
                     <StatementPanel 
@@ -776,9 +787,9 @@ function App() {
                   
                   <ResizablePanel
                     direction="horizontal"
-                    initialSize={600}
-                    minSize={400}
-                    maxSize={1000}
+                    initialSize={450}
+                    minSize={350}
+                    maxSize={700}
                     className="code-editor-panel-container"
                   >
                     {['shortform', 'one-liner', 'multi-question'].includes(kataDetails.type) ? (

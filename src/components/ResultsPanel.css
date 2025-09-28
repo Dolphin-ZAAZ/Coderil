@@ -5,6 +5,7 @@
   flex-direction: column;
   background-color: #1a1a1a;
   border-left: 1px solid #333;
+  border-radius: 0;
 }
 
 .results-header {

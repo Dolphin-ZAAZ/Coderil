@@ -13,6 +13,8 @@ interface KataSelectorProps {
   onRandomKataSelect?: () => void
   filters?: KataFilters
   onFilterChange?: (filters: KataFilters) => void
+  autoContinueEnabled?: boolean
+  onAutoContinueToggle?: () => void
 }
 
 export function KataSelector({ 
@@ -24,11 +26,14 @@ export function KataSelector({
   onKatasRefresh,
   onRandomKataSelect,
   filters: externalFilters,
-  onFilterChange
+  onFilterChange,
+  autoContinueEnabled = false,
+  onAutoContinueToggle
 }: KataSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [internalFilters, setInternalFilters] = useState<KataFilters>({})
   const [activeTab, setActiveTab] = useState<'katas' | 'import-export'>('katas')
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false)
   
   // Use external filters if provided, otherwise use internal filters
   const filters = externalFilters || internalFilters
@@ -218,20 +223,41 @@ export function KataSelector({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
-              {onRandomKataSelect && filteredKatas.length > 0 && (
-                <button
-                  onClick={onRandomKataSelect}
-                  className="random-kata-btn"
-                  title="Select a random kata based on current filters"
-                >
-                  🎲 Random
-                </button>
-              )}
+              <div className="search-controls">
+                {onRandomKataSelect && filteredKatas.length > 0 && (
+                  <button
+                    onClick={onRandomKataSelect}
+                    className="random-kata-btn"
+                    title="Select a random kata based on current filters"
+                  >
+                    🎲 Random
+                  </button>
+                )}
+                {onAutoContinueToggle && (
+                  <label className="auto-continue-toggle">
+                    <input
+                      type="checkbox"
+                      checked={autoContinueEnabled}
+                      onChange={onAutoContinueToggle}
+                    />
+                    <span className="toggle-text">Auto-continue</span>
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="filters-section">
               <div className="filters-header">
-                <h3>Filters</h3>
+                <div className="filters-title-row">
+                  <h3>Filters</h3>
+                  <button 
+                    className="filters-toggle-btn"
+                    onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+                    aria-label={filtersCollapsed ? "Expand filters" : "Collapse filters"}
+                  >
+                    {filtersCollapsed ? '▼' : '▲'}
+                  </button>
+                </div>
                 {hasActiveFilters && (
                   <button onClick={clearFilters} className="clear-filters-btn">
                     Clear All
@@ -239,7 +265,8 @@ export function KataSelector({
                 )}
               </div>
 
-              <div className="filter-groups">
+              {!filtersCollapsed && (
+                <div className="filter-groups">
                 {/* Language Filter */}
                 <div className="filter-group">
                   <h4>Language</h4>
@@ -309,7 +336,8 @@ export function KataSelector({
                     </div>
                   </div>
                 )}
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="kata-list-section">
