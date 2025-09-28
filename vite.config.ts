@@ -26,7 +26,7 @@ export default defineConfig({
             minify: false,
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['sqlite3', 'better-sqlite3', 'sql.js']
+              external: ['sqlite3', 'sql.js']
             }
           }
         }

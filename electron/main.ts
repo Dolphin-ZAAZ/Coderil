@@ -13,10 +13,16 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 // │ │ ├── main.js
 // │ │ └── preload.js
 // │
-process.env.DIST = join(__dirname, '../')
-process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
-  ? join(process.env.DIST, '../public')
-  : process.env.DIST
+// Handle path resolution for both development and production
+if (process.env.VITE_DEV_SERVER_URL) {
+  // Development mode
+  process.env.DIST = join(__dirname, '../dist')
+  process.env.VITE_PUBLIC = join(__dirname, '../public')
+} else {
+  // Production mode - files are packaged together
+  process.env.DIST = join(__dirname, '../dist')
+  process.env.VITE_PUBLIC = join(__dirname, '../dist')
+}
 
 // Disable GPU Acceleration for Windows 7
 if (process.platform === 'win32') app.disableHardwareAcceleration()
@@ -51,10 +57,13 @@ async function createWindow() {
 
   if (url) { // electron-vite-vue#298
     win.loadURL(url)
-    // Open devTool if the app is not packaged
-    win.webContents.openDevTools()
+    // Open devTool only in development mode and when not packaged
+    if (!app.isPackaged) {
+      win.webContents.openDevTools()
+    }
   } else {
     win.loadFile(indexHtml)
+    // Production mode - no dev tools
   }
 
   // Test actively push message to the Electron-Renderer
