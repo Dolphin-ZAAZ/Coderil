@@ -436,7 +436,7 @@ function App() {
           const processedJudgment = scoringService.processAIJudgment(mockAiJudgment)
           setAiJudgment(processedJudgment)
         }
-      } else if (['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type)) {
+      } else if (['shortform', 'one-liner', 'multi-question'].includes(kataDetails.type)) {
         // Check if this is a multi-question kata
         if (kataDetails.multiQuestionConfig) {
           // Multi-question shortform kata evaluation
@@ -469,7 +469,7 @@ function App() {
           const submission = {
             kataType: kataDetails.type as any,
             answer: shortformAnswer,
-            multipleChoiceConfig: kataDetails.multipleChoiceConfig,
+
             shortformConfig: kataDetails.shortformConfig,
             oneLinerConfig: kataDetails.oneLinerConfig
           }
@@ -668,7 +668,7 @@ function App() {
                     maxSize={500}
                     className="code-editor-panel-container"
                   >
-                    {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
+                    {['shortform', 'one-liner', 'multi-question'].includes(kataDetails.type) ? (
                       kataDetails.multiQuestionConfig ? (
                         <MultiQuestionPanel
                           kataType={kataDetails.type as any}
@@ -679,7 +679,6 @@ function App() {
                       ) : (
                         <ShortformAnswerPanel
                           kataType={kataDetails.type as any}
-                          multipleChoiceConfig={kataDetails.multipleChoiceConfig}
                           shortformConfig={kataDetails.shortformConfig}
                           oneLinerConfig={kataDetails.oneLinerConfig}
                           onSubmit={handleShortformSubmit}
@@ -737,7 +736,7 @@ function App() {
                     maxSize={1000}
                     className="code-editor-panel-container"
                   >
-                    {['shortform', 'multiple-choice', 'one-liner'].includes(kataDetails.type) ? (
+                    {['shortform', 'one-liner', 'multi-question'].includes(kataDetails.type) ? (
                       kataDetails.multiQuestionConfig ? (
                         <MultiQuestionPanel
                           kataType={kataDetails.type as any}
@@ -748,7 +747,6 @@ function App() {
                       ) : (
                         <ShortformAnswerPanel
                           kataType={kataDetails.type as any}
-                          multipleChoiceConfig={kataDetails.multipleChoiceConfig}
                           shortformConfig={kataDetails.shortformConfig}
                           oneLinerConfig={kataDetails.oneLinerConfig}
                           onSubmit={handleShortformSubmit}

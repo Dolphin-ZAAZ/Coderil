@@ -129,31 +129,77 @@ export function MultiQuestionPanel({
                 ))}
               </div>
             </div>
+          ) : question.type === 'explanation' ? (
+            <div className="explanation-answer-section">
+              <p className="instruction">
+                Provide a detailed explanation. {question.minWords && `Minimum ${question.minWords} words.`}
+              </p>
+              <textarea
+                value={typeof answer === 'string' ? answer : ''}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                placeholder="Write your detailed explanation here..."
+                disabled={isLoading}
+                className="explanation-textarea"
+                rows={8}
+              />
+              <div className="word-count">
+                {typeof answer === 'string' ? answer.trim().split(/\s+/).filter(w => w.length > 0).length : 0} words
+                {question.minWords && ` (minimum: ${question.minWords})`}
+              </div>
+            </div>
+          ) : question.type === 'code' ? (
+            <div className="code-answer-section">
+              <p className="instruction">
+                Write your code solution{question.language && ` in ${question.language.toUpperCase()}`}.
+              </p>
+              {question.starterCode && (
+                <div className="starter-code-hint">
+                  <strong>Starter code hint:</strong>
+                  <pre className="starter-code">{question.starterCode}</pre>
+                </div>
+              )}
+              <textarea
+                value={typeof answer === 'string' ? answer : ''}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                placeholder={`Write your ${question.language || 'code'} solution here...`}
+                disabled={isLoading}
+                className="code-textarea"
+                rows={12}
+                spellCheck={false}
+              />
+              <div className="code-info">
+                Language: {question.language?.toUpperCase() || 'Code'} | 
+                Lines: {typeof answer === 'string' ? answer.split('\n').length : 1}
+              </div>
+            </div>
+          ) : question.type === 'one-liner' ? (
+            <div className="text-answer-section">
+              <input
+                type="text"
+                value={typeof answer === 'string' ? answer : ''}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                placeholder="Enter your one-line answer..."
+                maxLength={200}
+                disabled={isLoading}
+                className="answer-input"
+              />
+              <div className="character-count">
+                {typeof answer === 'string' ? answer.length : 0} / 200
+              </div>
+            </div>
           ) : (
             <div className="text-answer-section">
-              {question.type === 'one-liner' ? (
-                <input
-                  type="text"
-                  value={typeof answer === 'string' ? answer : ''}
-                  onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                  placeholder="Enter your one-line answer..."
-                  maxLength={200}
-                  disabled={isLoading}
-                  className="answer-input"
-                />
-              ) : (
-                <textarea
-                  value={typeof answer === 'string' ? answer : ''}
-                  onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                  placeholder="Enter your brief answer..."
-                  maxLength={question.maxLength || 500}
-                  disabled={isLoading}
-                  className="answer-textarea"
-                  rows={3}
-                />
-              )}
+              <textarea
+                value={typeof answer === 'string' ? answer : ''}
+                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                placeholder="Enter your brief answer..."
+                maxLength={question.maxLength || 500}
+                disabled={isLoading}
+                className="answer-textarea"
+                rows={3}
+              />
               <div className="character-count">
-                {typeof answer === 'string' ? answer.length : 0} / {question.maxLength || (question.type === 'one-liner' ? 200 : 500)}
+                {typeof answer === 'string' ? answer.length : 0} / {question.maxLength || 500}
               </div>
             </div>
           )}
@@ -193,8 +239,14 @@ export function MultiQuestionPanel({
                     <span className="answer-value">
                       {question.options?.filter(opt => answer.includes(opt.id)).map(opt => opt.text).join(', ') || answer.join(', ')}
                     </span>
+                  ) : question.type === 'code' ? (
+                    <pre className="code-answer">{answer}</pre>
                   ) : (
-                    <span className="answer-value">{answer}</span>
+                    <span className="answer-value">
+                      {typeof answer === 'string' && answer.length > 200 
+                        ? `${answer.substring(0, 200)}...` 
+                        : answer}
+                    </span>
                   )
                 ) : (
                   <span className="no-answer">Not answered</span>

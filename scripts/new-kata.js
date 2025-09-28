@@ -24,7 +24,7 @@ if (!kataName) {
   console.error('   or: npm run new-kata <kata-name> [options]');
   console.error('Options:');
   console.error('  --language, -l <lang>    Language (py, js, ts, cpp) [default: py]');
-  console.error('  --type, -t <type>        Type (code, explain, template, codebase, shortform, multiple-choice, one-liner, multi-question) [default: code]');
+  console.error('  --type, -t <type>        Type (code, explain, template, codebase, shortform, one-liner, multi-question) [default: code]');
   console.error('  --difficulty, -d <diff>  Difficulty (easy, medium, hard) [default: easy]');
   console.error('  --title <title>          Custom title [default: derived from kata-name]');
   process.exit(1);
@@ -32,7 +32,7 @@ if (!kataName) {
 
 // Validation arrays
 const validLanguages = ['py', 'js', 'ts', 'cpp'];
-const validTypes = ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'];
+const validTypes = ['code', 'explain', 'template', 'codebase', 'shortform', 'one-liner', 'multi-question'];
 const validDifficulties = ['easy', 'medium', 'hard'];
 
 // Parse options
@@ -119,18 +119,18 @@ try {
 
 // Template generation functions
 function generateMetaYaml(kataName, options) {
-  const entryFile = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) 
+  const entryFile = ['shortform', 'one-liner', 'multi-question'].includes(options.type) 
     ? 'answer.md' 
     : getEntryFileName(options.language);
   const testFile = getTestFileName(options.language);
   
-  const language = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) 
+  const language = ['shortform', 'one-liner', 'multi-question'].includes(options.type) 
     ? 'none' 
     : options.language;
-  const tags = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)
+  const tags = ['shortform', 'one-liner', 'multi-question'].includes(options.type)
     ? ["concept", "quick"]
     : ["practice", options.language];
-  const testFile2 = ['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)
+  const testFile2 = ['shortform', 'one-liner', 'multi-question'].includes(options.type)
     ? 'none'
     : testFile;
 
@@ -145,7 +145,7 @@ solution: "solution.${getFileExtension(options.language)}"
 test:
   kind: "${getTestKind(options.type)}"
   file: "${testFile2}"
-timeout_ms: ${['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type) ? 0 : 5000}`;
+timeout_ms: ${['shortform', 'one-liner', 'multi-question'].includes(options.type) ? 0 : 5000}`;
 
   // Add shortform-specific configurations
   if (options.type === 'shortform') {
@@ -161,24 +161,7 @@ shortform:
   caseSensitive: false
   maxLength: 100
   explanation: "Optional explanation shown after submission"`;
-  } else if (options.type === 'multiple-choice') {
-    baseYaml += `
 
-# Multiple choice configuration
-multipleChoice:
-  question: "Replace this with your multiple choice question"
-  allowMultiple: false
-  options:
-    - id: "a"
-      text: "Option A"
-    - id: "b" 
-      text: "Option B"
-    - id: "c"
-      text: "Option C"
-    - id: "d"
-      text: "Option D"
-  correctAnswers: ["a"]
-  explanation: "Optional explanation shown after submission"`;
   } else if (options.type === 'one-liner') {
     baseYaml += `
 
@@ -235,6 +218,67 @@ multiQuestion:
       caseSensitive: false
       points: 1
       explanation: "Optional explanation for this question"`;
+  } else if (options.type === 'comprehensive-exam') {
+    baseYaml += `
+
+# Comprehensive exam configuration
+multiQuestion:
+  title: "Comprehensive Programming Examination"
+  description: "A thorough assessment combining theoretical knowledge and practical coding skills."
+  passingScore: 75
+  showProgressBar: true
+  allowReview: true
+  questions:
+    - id: "theory1"
+      type: "multiple-choice"
+      question: "Which of the following are fundamental programming concepts?"
+      allowMultiple: true
+      options:
+        - id: "a"
+          text: "Variables and Data Types"
+        - id: "b"
+          text: "Control Structures"
+        - id: "c"
+          text: "Functions and Methods"
+        - id: "d"
+          text: "Database Normalization"
+      correctAnswers: ["a", "b", "c"]
+      points: 3
+      explanation: "Variables, control structures, and functions are fundamental programming concepts. Database normalization is specific to database design."
+    
+    - id: "concept1"
+      type: "shortform"
+      question: "What is the time complexity of a binary search algorithm?"
+      expectedAnswer: "O(log n)"
+      acceptableAnswers: ["O(log n)", "logarithmic", "log n"]
+      caseSensitive: false
+      maxLength: 50
+      points: 2
+      explanation: "Binary search has O(log n) time complexity because it eliminates half the search space with each comparison."
+    
+    - id: "explain1"
+      type: "explanation"
+      question: "Explain the concept of object-oriented programming and its main principles. Provide examples of how these principles improve code organization and maintainability."
+      minWords: 100
+      points: 5
+      explanation: "Should cover encapsulation, inheritance, polymorphism, and abstraction with practical examples."
+    
+    - id: "code1"
+      type: "code"
+      question: "Write a function that finds the maximum element in an array. Handle edge cases appropriately."
+      language: "py"
+      starterCode: "def find_max(arr):\\n    # Your implementation here\\n    pass"
+      points: 4
+      explanation: "Should handle empty arrays and implement correct logic to find maximum value."
+    
+    - id: "fill1"
+      type: "one-liner"
+      question: "Complete this statement: In Python, the _____ keyword is used to define a function."
+      expectedAnswer: "def"
+      acceptableAnswers: ["def"]
+      caseSensitive: false
+      points: 1
+      explanation: "The 'def' keyword is used to define functions in Python."`;
   }
 
   return baseYaml + '\n';
@@ -249,12 +293,13 @@ function generateStatementMd(options) {
     return generateCodebaseStatement(options);
   } else if (options.type === 'shortform') {
     return generateShortformStatement(options);
-  } else if (options.type === 'multiple-choice') {
-    return generateMultipleChoiceStatement(options);
+
   } else if (options.type === 'one-liner') {
     return generateOneLinerStatement(options);
   } else if (options.type === 'multi-question') {
     return generateMultiQuestionStatement(options);
+  } else if (options.type === 'comprehensive-exam') {
+    return generateComprehensiveExamStatement(options);
   } else {
     return generateCodeStatement(options);
   }
@@ -474,29 +519,7 @@ This kata is configured in \`meta.yaml\` with:
 `;
 }
 
-function generateMultipleChoiceStatement(options) {
-  return `# ${options.title}
 
-## Question
-
-Replace this with your multiple choice question. This should test conceptual understanding or knowledge recall.
-
-The question and answer options are configured in the \`meta.yaml\` file.
-
-## Instructions
-
-Select the correct answer(s) from the options provided. This question may allow single or multiple selections depending on the configuration.
-
-## Configuration
-
-This kata is configured in \`meta.yaml\` with:
-- Question text
-- Answer options with unique IDs
-- Correct answer IDs
-- Whether multiple selections are allowed
-- Optional explanation shown after submission
-`;
-}
 
 function generateOneLinerStatement(options) {
   return `# ${options.title}
@@ -550,7 +573,50 @@ The questions and settings are configured in the \`meta.yaml\` file under the \`
 - \`allowReview\`: Allow reviewing answers before submission
 - \`questions\`: Array of question objects
 
-Each question can be of type \`shortform\`, \`multiple-choice\`, or \`one-liner\` with appropriate configuration.
+Each question can be of type \`shortform\`, \`one-liner\`, \`explanation\`, or \`code\` with appropriate configuration.
+`;
+}
+
+function generateComprehensiveExamStatement(options) {
+  return `# ${options.title}
+
+## Overview
+
+This is a comprehensive examination that combines multiple question types to thoroughly assess your knowledge and skills. The exam includes both theoretical questions and practical coding challenges.
+
+## Exam Structure
+
+This comprehensive exam contains various types of questions:
+- **Multiple Choice**: Test your conceptual understanding
+- **Short Answer**: Quick knowledge checks and definitions
+- **Explanations**: Detailed explanations of concepts and processes
+- **Code Questions**: Practical programming challenges
+- **One-Liner**: Fill-in-the-blank and completion questions
+
+## Instructions
+
+1. **Read Carefully**: Take time to understand each question before answering
+2. **Navigate Freely**: Use the question indicators to jump between questions
+3. **Review Before Submitting**: Use the review screen to check all your answers
+4. **Time Management**: Allocate appropriate time for longer questions
+5. **Code Quality**: For coding questions, focus on correctness and clarity
+
+## Scoring
+
+- Questions have different point values based on complexity
+- Passing score is typically 70-80% of total points
+- Partial credit may be awarded for explanation and code questions
+- Review the point values shown for each question
+
+## Tips for Success
+
+- **Multiple Choice**: Read all options carefully before selecting
+- **Explanations**: Be thorough but concise, include key concepts
+- **Code Questions**: Test your logic mentally before writing
+- **Short Answers**: Be precise and use proper terminology
+- **Review**: Double-check your work before final submission
+
+Good luck with your comprehensive examination!
 `;
 }
 
@@ -576,7 +642,7 @@ function generatePythonEntry(options) {
     return '# Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '# Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
+  } else if (['shortform', 'one-liner', 'multi-question'].includes(options.type)) {
     return '# Your answer will be entered through the UI\n';
   }
   
@@ -602,7 +668,7 @@ function generateJavaScriptEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
+  } else if (['shortform', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -626,7 +692,7 @@ function generateTypeScriptEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
+  } else if (['shortform', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -648,7 +714,7 @@ function generateCppEntry(options) {
     return '// Create your template files in the template/ directory\n';
   } else if (options.type === 'codebase') {
     return '// Write your codebase analysis in analysis.md\n';
-  } else if (['shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
+  } else if (['shortform', 'one-liner', 'multi-question'].includes(options.type)) {
     return '// Your answer will be entered through the UI\n';
   }
   
@@ -1003,7 +1069,7 @@ int main() {
 }
 
 function generateTestFile(options) {
-  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(options.type)) {
+  if (['explain', 'template', 'codebase', 'shortform', 'one-liner', 'multi-question'].includes(options.type)) {
     return null; // No test files for non-code katas
   }
   
@@ -1244,7 +1310,7 @@ function getFileExtension(language) {
 }
 
 function getTestKind(type) {
-  if (['explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question'].includes(type)) {
+  if (['explain', 'template', 'codebase', 'shortform', 'one-liner', 'multi-question'].includes(type)) {
     return 'none';
   }
   return 'programmatic';
@@ -1491,13 +1557,7 @@ Type your brief answer here.`;
     console.log('Created: answer.md');
   }
 
-  if (options.type === 'multiple-choice') {
-    const answerContent = `# Your Selection
 
-Select your answer(s) from the choices provided.`;
-    fs.writeFileSync(path.join(kataDir, 'answer.md'), answerContent);
-    console.log('Created: answer.md');
-  }
 
   if (options.type === 'one-liner') {
     const answerContent = `# Your Answer
@@ -1511,6 +1571,16 @@ Provide your one-line answer here.`;
     const answerContent = `# Your Answers
 
 Your answers will be collected through the interactive multi-question interface.`;
+    fs.writeFileSync(path.join(kataDir, 'answer.md'), answerContent);
+    console.log('Created: answer.md');
+  }
+
+  if (options.type === 'comprehensive-exam') {
+    const answerContent = `# Comprehensive Examination
+
+Your answers will be collected through the comprehensive exam interface.
+
+This exam includes multiple question types and will test both your theoretical knowledge and practical coding skills.`;
     fs.writeFileSync(path.join(kataDir, 'answer.md'), answerContent);
     console.log('Created: answer.md');
   }

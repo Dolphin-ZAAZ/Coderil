@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react'
 import type { 
-  MultipleChoiceConfig, 
   ShortformConfig, 
   OneLinerConfig,
   KataType 
@@ -9,7 +8,6 @@ import './ShortformAnswerPanel.css'
 
 interface ShortformAnswerPanelProps {
   kataType: KataType
-  multipleChoiceConfig?: MultipleChoiceConfig
   shortformConfig?: ShortformConfig
   oneLinerConfig?: OneLinerConfig
   onSubmit: (answer: string | string[]) => void
@@ -18,40 +16,18 @@ interface ShortformAnswerPanelProps {
 
 export function ShortformAnswerPanel({
   kataType,
-  multipleChoiceConfig,
   shortformConfig,
   oneLinerConfig,
   onSubmit,
   isLoading = false
 }: ShortformAnswerPanelProps) {
   const [textAnswer, setTextAnswer] = useState('')
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([])
 
   const handleTextSubmit = useCallback(() => {
     if (textAnswer.trim()) {
       onSubmit(textAnswer.trim())
     }
   }, [textAnswer, onSubmit])
-
-  const handleMultipleChoiceSubmit = useCallback(() => {
-    if (selectedOptions.length > 0) {
-      onSubmit(selectedOptions)
-    }
-  }, [selectedOptions, onSubmit])
-
-  const handleOptionChange = useCallback((optionId: string, checked: boolean) => {
-    if (!multipleChoiceConfig) return
-
-    if (multipleChoiceConfig.allowMultiple) {
-      setSelectedOptions(prev => 
-        checked 
-          ? [...prev, optionId]
-          : prev.filter(id => id !== optionId)
-      )
-    } else {
-      setSelectedOptions(checked ? [optionId] : [])
-    }
-  }, [multipleChoiceConfig])
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -78,50 +54,7 @@ export function ShortformAnswerPanel({
     }
   }
 
-  if (kataType === 'multiple-choice' && multipleChoiceConfig) {
-    return (
-      <div className="shortform-answer-panel">
-        <div className="question-section">
-          <h3>Question</h3>
-          <p className="question-text">{multipleChoiceConfig.question}</p>
-        </div>
 
-        <div className="options-section">
-          <h4>
-            {multipleChoiceConfig.allowMultiple 
-              ? 'Select all that apply:' 
-              : 'Select one:'
-            }
-          </h4>
-          <div className="options-list">
-            {multipleChoiceConfig.options.map(option => (
-              <label key={option.id} className="option-item">
-                <input
-                  type={multipleChoiceConfig.allowMultiple ? 'checkbox' : 'radio'}
-                  name="multiple-choice-answer"
-                  value={option.id}
-                  checked={selectedOptions.includes(option.id)}
-                  onChange={(e) => handleOptionChange(option.id, e.target.checked)}
-                  disabled={isLoading}
-                />
-                <span className="option-text">{option.text}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="submit-section">
-          <button
-            onClick={handleMultipleChoiceSubmit}
-            disabled={selectedOptions.length === 0 || isLoading}
-            className="submit-button"
-          >
-            {isLoading ? 'Submitting...' : 'Submit Answer'}
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   const config = shortformConfig || oneLinerConfig
   if (!config) {

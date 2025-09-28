@@ -1,0 +1,69 @@
+slug: sample-comprehensive-exam
+title: Sample Comprehensive Exam
+language: none
+type: multi-question
+difficulty: medium
+tags: [exam, comprehensive, assessment]
+entry: answer.md
+test:
+  kind: none
+  file: none
+timeout_ms: 0
+
+multiQuestion:
+  title: "Sample Comprehensive Exam"
+  description: "A comprehensive assessment combining multiple question types to thoroughly test knowledge and skills."
+  passingScore: 75
+  showProgressBar: true
+  allowReview: true
+  questions:
+    - id: "mc1"
+      type: "multiple-choice"
+      question: "Which of the following are programming best practices?"
+      allowMultiple: true
+      options:
+        - id: "a"
+          text: "Write clear, readable code"
+        - id: "b"
+          text: "Use meaningful variable names"
+        - id: "c"
+          text: "Avoid code comments"
+        - id: "d"
+          text: "Follow consistent formatting"
+      correctAnswers: ["a", "b", "d"]
+      points: 3
+      explanation: "Clear code, meaningful names, and consistent formatting are best practices. Comments are actually helpful, not something to avoid."
+    
+    - id: "short1"
+      type: "shortform"
+      question: "What does the acronym DRY stand for in programming?"
+      expectedAnswer: "Don't Repeat Yourself"
+      acceptableAnswers: ["Don't Repeat Yourself", "Do not Repeat Yourself"]
+      caseSensitive: false
+      maxLength: 50
+      points: 2
+      explanation: "DRY stands for 'Don't Repeat Yourself', a principle that promotes code reusability and maintainability."
+    
+    - id: "explain1"
+      type: "explanation"
+      question: "Explain the concept of version control and why it's important in software development. Include at least two benefits it provides to development teams."
+      minWords: 80
+      points: 5
+      explanation: "Should cover tracking changes, collaboration, backup, branching, and merging capabilities."
+    
+    - id: "code1"
+      type: "code"
+      question: "Write a function that reverses a string without using built-in reverse methods."
+      language: "py"
+      starterCode: "def reverse_string(s):\n    # Implement string reversal logic\n    pass"
+      points: 4
+      explanation: "Should implement manual string reversal using loops or recursion."
+    
+    - id: "fill1"
+      type: "one-liner"
+      question: "Complete this statement: In object-oriented programming, _____ allows a class to inherit properties and methods from another class."
+      expectedAnswer: "inheritance"
+      acceptableAnswers: ["inheritance", "class inheritance"]
+      caseSensitive: false
+      points: 1
+      explanation: "Inheritance is the OOP principle that allows classes to inherit from parent classes."

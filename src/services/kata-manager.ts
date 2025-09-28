@@ -8,7 +8,7 @@ import {
   KataMetadata, 
   TestConfig, 
   Rubric,
-  MultipleChoiceConfig,
+
   ShortformConfig,
   OneLinerConfig,
   MultiQuestionConfig,
@@ -16,7 +16,7 @@ import {
   validateKataMetadata,
   validateKataStructure,
   validateRubric,
-  validateMultipleChoiceConfig,
+
   validateShortformConfig,
   validateOneLinerConfig,
   validateMultiQuestionConfig,
@@ -367,7 +367,7 @@ export class KataManagerService {
    */
   private async loadRubric(kataPath: string, metadata: KataMetadata): Promise<Rubric | undefined> {
     // Only explanation, template, and shortform katas have rubrics
-    if (!['explain', 'template', 'shortform', 'multiple-choice', 'one-liner'].includes(metadata.type)) {
+    if (!['explain', 'template', 'shortform', 'one-liner', 'multi-question'].includes(metadata.type)) {
       return undefined;
     }
 
@@ -411,7 +411,6 @@ export class KataManagerService {
         keys = ['structure', 'completeness', 'best_practices'];
         break;
       case 'shortform':
-      case 'multiple-choice':
       case 'one-liner':
         keys = ['correctness', 'clarity'];
         break;
@@ -433,7 +432,7 @@ export class KataManagerService {
    */
   private async loadShortformConfigs(kataPath: string, metadata: KataMetadata): Promise<{
     multiQuestionConfig?: MultiQuestionConfig,
-    multipleChoiceConfig?: MultipleChoiceConfig,
+
     shortformConfig?: ShortformConfig,
     oneLinerConfig?: OneLinerConfig
   }> {
@@ -447,9 +446,7 @@ export class KataManagerService {
     }
 
     // Fall back to legacy single-question configs
-    if (metadata.type === 'multiple-choice') {
-      configs.multipleChoiceConfig = await this.loadMultipleChoiceConfig(kataPath, metadata);
-    } else if (metadata.type === 'shortform') {
+    if (metadata.type === 'shortform') {
       configs.shortformConfig = await this.loadShortformConfig(kataPath, metadata);
     } else if (metadata.type === 'one-liner') {
       configs.oneLinerConfig = await this.loadOneLinerConfig(kataPath, metadata);
@@ -495,42 +492,7 @@ export class KataManagerService {
     return undefined;
   }
 
-  /**
-   * Loads multiple choice configuration
-   */
-  private async loadMultipleChoiceConfig(kataPath: string, metadata: KataMetadata): Promise<MultipleChoiceConfig | undefined> {
-    // Check if config is embedded in metadata
-    if ((metadata as any).multipleChoice) {
-      const validation = validateMultipleChoiceConfig((metadata as any).multipleChoice);
-      if (validation.isValid) {
-        return (metadata as any).multipleChoice as MultipleChoiceConfig;
-      } else {
-        console.warn(`Invalid multiple choice config in ${kataPath}:`, validation.errors);
-      }
-    }
 
-    // Try to load from separate config.yaml file
-    const configPath = path.join(kataPath, 'config.yaml');
-    if (fs.existsSync(configPath)) {
-      try {
-        const configContent = fs.readFileSync(configPath, 'utf8');
-        const config = yaml.load(configContent) as any;
-        
-        if (config.multipleChoice) {
-          const validation = validateMultipleChoiceConfig(config.multipleChoice);
-          if (validation.isValid) {
-            return config.multipleChoice as MultipleChoiceConfig;
-          } else {
-            console.warn(`Invalid multiple choice config in ${kataPath}:`, validation.errors);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to parse config.yaml in ${kataPath}:`, error);
-      }
-    }
-
-    return undefined;
-  }
 
   /**
    * Loads shortform configuration

@@ -38,7 +38,7 @@
 - [ ] 6. Build AI authoring dialog UI component
   - Create AIAuthoringDialog React component with form inputs
   - Add language, difficulty, and kata type selection controls
-  - Add context control for users to provide additional context and files
+  - Add context control for users to provide additional context and files eg. pdf and image textbook snippets
   - Implement topic tags, constraints, and additional requirements inputs
   - Add form validation and submission handling
   - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3, 5.4, 5.5_

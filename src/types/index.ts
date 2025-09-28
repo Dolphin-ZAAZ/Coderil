@@ -1,7 +1,7 @@
 // Core data models for the Code Kata App
 
 export type Language = 'py' | 'js' | 'ts' | 'cpp' | 'none'
-export type KataType = 'code' | 'explain' | 'template' | 'codebase' | 'shortform' | 'multiple-choice' | 'one-liner'
+export type KataType = 'code' | 'explain' | 'template' | 'codebase' | 'shortform' | 'one-liner' | 'multi-question'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type TestKind = 'programmatic' | 'io' | 'none'
 
@@ -43,7 +43,6 @@ export interface KataDetails extends Kata {
   // Multi-question shortform configuration
   multiQuestionConfig?: MultiQuestionConfig
   // Legacy single-question configurations (for backward compatibility)
-  multipleChoiceConfig?: MultipleChoiceConfig
   shortformConfig?: ShortformConfig
   oneLinerConfig?: OneLinerConfig
 }
@@ -64,15 +63,11 @@ export interface Rubric {
 }
 
 // Shortform kata specific types
-export interface MultipleChoiceOption {
-  id: string
-  text: string
-  correct?: boolean
-}
+
 
 export interface ShortformQuestion {
   id: string
-  type: 'shortform' | 'multiple-choice' | 'one-liner'
+  type: 'shortform' | 'one-liner' | 'explanation' | 'code'
   question: string
   // For shortform and one-liner questions
   expectedAnswer?: string
@@ -83,6 +78,13 @@ export interface ShortformQuestion {
   options?: MultipleChoiceOption[]
   correctAnswers?: string[]
   allowMultiple?: boolean
+  // For explanation questions
+  rubric?: Rubric
+  minWords?: number
+  // For code questions
+  language?: Language
+  starterCode?: string
+  testCases?: string[]
   // Common
   explanation?: string
   points?: number // Optional scoring weight
@@ -98,13 +100,6 @@ export interface MultiQuestionConfig {
 }
 
 // Legacy single-question configs (for backward compatibility)
-export interface MultipleChoiceConfig {
-  question: string
-  options: MultipleChoiceOption[]
-  correctAnswers: string[] // IDs of correct options
-  allowMultiple?: boolean
-  explanation?: string
-}
 
 export interface ShortformConfig {
   question: string
@@ -238,7 +233,7 @@ export const validateLanguage = (language: string): language is Language => {
 }
 
 export const validateKataType = (type: string): type is KataType => {
-  return ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(type)
+  return ['code', 'explain', 'template', 'codebase', 'shortform', 'multiple-choice', 'one-liner', 'multi-question', 'comprehensive-exam'].includes(type)
 }
 
 export const validateDifficulty = (difficulty: string): difficulty is Difficulty => {
@@ -267,7 +262,7 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
   }
 
   if (!metadata.type || !validateKataType(metadata.type)) {
-    errors.push('type is required and must be one of: code, explain, template, codebase, shortform, multiple-choice, one-liner')
+    errors.push('type is required and must be one of: code, explain, template, codebase, shortform, multiple-choice, one-liner, multi-question, comprehensive-exam')
   }
 
   if (!metadata.difficulty || !validateDifficulty(metadata.difficulty)) {
@@ -298,7 +293,7 @@ export const validateKataMetadata = (metadata: any): ValidationResult => {
   }
 
   // For explanation, codebase, and shortform katas, timeout_ms can be 0 since no code execution is needed
-  if (!['explain', 'codebase', 'shortform', 'multiple-choice', 'one-liner'].includes(metadata.type) && metadata.timeout_ms === 0) {
+  if (!['explain', 'codebase', 'shortform', 'one-liner', 'multi-question'].includes(metadata.type) && metadata.timeout_ms === 0) {
     errors.push('timeout_ms must be greater than 0 for code and template katas')
   }
 
@@ -420,38 +415,7 @@ export const validateRubric = (rubric: any): ValidationResult => {
   }
 }
 
-export const validateMultipleChoiceConfig = (config: any): ValidationResult => {
-  const errors: string[] = []
-  const warnings: string[] = []
 
-  if (!config || typeof config !== 'object') {
-    errors.push('multiple choice config must be an object')
-    return { isValid: false, errors, warnings }
-  }
-
-  if (!config.question || typeof config.question !== 'string') {
-    errors.push('question is required and must be a string')
-  }
-
-  if (!Array.isArray(config.options) || config.options.length < 2) {
-    errors.push('options must be an array with at least 2 items')
-  } else {
-    config.options.forEach((option: any, index: number) => {
-      if (!option.id || typeof option.id !== 'string') {
-        errors.push(`option ${index} must have a string id`)
-      }
-      if (!option.text || typeof option.text !== 'string') {
-        errors.push(`option ${index} must have a string text`)
-      }
-    })
-  }
-
-  if (!Array.isArray(config.correctAnswers) || config.correctAnswers.length === 0) {
-    errors.push('correctAnswers must be a non-empty array')
-  }
-
-  return { isValid: errors.length === 0, errors, warnings }
-}
 
 export const validateShortformConfig = (config: any): ValidationResult => {
   const errors: string[] = []
@@ -516,8 +480,8 @@ export const validateMultiQuestionConfig = (config: any): ValidationResult => {
       errors.push(`question ${index} must have a string id`)
     }
 
-    if (!question.type || !['shortform', 'multiple-choice', 'one-liner'].includes(question.type)) {
-      errors.push(`question ${index} must have a valid type (shortform, multiple-choice, one-liner)`)
+    if (!question.type || !['shortform', 'multiple-choice', 'one-liner', 'explanation', 'code'].includes(question.type)) {
+      errors.push(`question ${index} must have a valid type (shortform, multiple-choice, one-liner, explanation, code)`)
     }
 
     if (!question.question || typeof question.question !== 'string') {
@@ -531,7 +495,15 @@ export const validateMultiQuestionConfig = (config: any): ValidationResult => {
       if (!Array.isArray(question.correctAnswers) || question.correctAnswers.length === 0) {
         errors.push(`question ${index} (multiple-choice) must have correctAnswers`)
       }
-    } else {
+    } else if (question.type === 'explanation') {
+      if (question.minWords && (typeof question.minWords !== 'number' || question.minWords < 1)) {
+        errors.push(`question ${index} (explanation) minWords must be a positive number if specified`)
+      }
+    } else if (question.type === 'code') {
+      if (!question.language || !validateLanguage(question.language)) {
+        errors.push(`question ${index} (code) must have a valid language`)
+      }
+    } else if (['shortform', 'one-liner'].includes(question.type)) {
       if (!question.expectedAnswer && !question.acceptableAnswers) {
         warnings.push(`question ${index} has no expected answer or acceptable answers`)
       }

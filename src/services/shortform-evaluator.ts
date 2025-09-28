@@ -117,10 +117,15 @@ export class ShortformEvaluatorService {
    * Evaluates a single question within a multi-question kata
    */
   private evaluateQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
-    if (question.type === 'multiple-choice') {
-      return this.evaluateMultipleChoiceQuestion(question, answer)
-    } else {
-      return this.evaluateTextQuestion(question, answer)
+    switch (question.type) {
+      case 'multiple-choice':
+        return this.evaluateMultipleChoiceQuestion(question, answer)
+      case 'explanation':
+        return this.evaluateExplanationQuestion(question, answer)
+      case 'code':
+        return this.evaluateCodeQuestion(question, answer)
+      default:
+        return this.evaluateTextQuestion(question, answer)
     }
   }
 
@@ -150,6 +155,88 @@ export class ShortformEvaluatorService {
       explanation: question.explanation,
       expectedAnswer: correctAnswers.join(', '),
       actualAnswer: userAnswers
+    }
+  }
+
+  /**
+   * Evaluates an explanation question using AI judging
+   */
+  private evaluateExplanationQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
+    const userAnswer = Array.isArray(answer) ? answer[0] : answer
+    
+    // For now, provide basic validation - in a full implementation, this would use AI judging
+    const wordCount = userAnswer.trim().split(/\s+/).length
+    const minWords = question.minWords || 50
+    
+    if (wordCount < minWords) {
+      return {
+        correct: false,
+        score: 0,
+        feedback: `Answer too short. Expected at least ${minWords} words, got ${wordCount}.`,
+        explanation: question.explanation,
+        expectedAnswer: `At least ${minWords} words`,
+        actualAnswer: userAnswer
+      }
+    }
+    
+    // Basic scoring based on length and content
+    const hasKeyTerms = question.expectedAnswer ? 
+      userAnswer.toLowerCase().includes(question.expectedAnswer.toLowerCase()) : true
+    
+    const score = hasKeyTerms ? Math.min(100, 60 + (wordCount / minWords) * 40) : 40
+    const passed = score >= 60
+    
+    return {
+      correct: passed,
+      score,
+      feedback: passed ? 
+        `Good explanation! Word count: ${wordCount}` : 
+        `Explanation needs improvement. Consider including key concepts.`,
+      explanation: question.explanation,
+      expectedAnswer: question.expectedAnswer,
+      actualAnswer: userAnswer
+    }
+  }
+
+  /**
+   * Evaluates a code question
+   */
+  private evaluateCodeQuestion(question: ShortformQuestion, answer: string | string[]): ShortformEvaluationResult {
+    const userCode = Array.isArray(answer) ? answer[0] : answer
+    
+    // Basic code validation - in a full implementation, this would execute and test the code
+    if (!userCode.trim()) {
+      return {
+        correct: false,
+        score: 0,
+        feedback: 'No code provided.',
+        explanation: question.explanation,
+        expectedAnswer: 'Working code solution',
+        actualAnswer: userCode
+      }
+    }
+    
+    // Simple heuristic scoring based on code characteristics
+    const hasFunction = /function|def|=>|\{/.test(userCode)
+    const hasLogic = /if|for|while|return/.test(userCode)
+    const codeLength = userCode.trim().length
+    
+    let score = 0
+    if (hasFunction) score += 30
+    if (hasLogic) score += 40
+    if (codeLength > 20) score += 30
+    
+    const passed = score >= 60
+    
+    return {
+      correct: passed,
+      score,
+      feedback: passed ? 
+        'Code looks good! Contains expected structure and logic.' : 
+        'Code needs improvement. Make sure to include proper function structure and logic.',
+      explanation: question.explanation,
+      expectedAnswer: 'Working code with proper structure',
+      actualAnswer: userCode
     }
   }
 
