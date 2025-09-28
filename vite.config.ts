@@ -46,8 +46,16 @@ export default defineConfig({
             sourcemap: true,
             minify: false,
             outDir: 'dist-electron',
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs'],
+              fileName: () => 'preload.js'
+            },
             rollupOptions: {
-              external: ['electron']
+              external: ['electron'],
+              output: {
+                format: 'cjs'
+              }
             }
           }
         }
@@ -61,10 +69,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
-    rollupOptions: {
-      external: ['path', 'fs', 'os', 'crypto']
-    }
+    emptyOutDir: true
   },
   server: {
     port: 5173
