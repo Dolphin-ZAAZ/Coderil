@@ -1,0 +1,317 @@
+.error-notification-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  max-width: 400px;
+  width: 100%;
+}
+
+.error-notification-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px 4px 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.error-notification-count {
+  color: #495057;
+}
+
+.error-notification-dismiss-all {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.error-notification-dismiss-all:hover {
+  background-color: #e9ecef;
+}
+
+.error-notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.error-notification {
+  background-color: #fff;
+  border-bottom: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.error-notification:last-child {
+  border-bottom: none;
+}
+
+.error-notification.hidden {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.error-notification.warning {
+  border-left: 4px solid #ffc107;
+}
+
+.error-notification.error {
+  border-left: 4px solid #dc3545;
+}
+
+.error-notification-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem;
+  gap: 0.75rem;
+}
+
+.error-notification-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.error-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-notification-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.25rem;
+  word-wrap: break-word;
+}
+
+.error-notification-details {
+  font-size: 0.875rem;
+  color: #6c757d;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.error-notification-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.error-notification-toggle,
+.error-notification-close {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.error-notification-toggle:hover,
+.error-notification-close:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.error-notification-expanded {
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.error-notification-expanded-content {
+  padding: 1rem;
+  font-size: 0.875rem;
+}
+
+.error-notification-expanded-content strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #495057;
+}
+
+.error-notification-expanded-content pre {
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #dc3545;
+}
+
+.error-notification-timestamp {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.5rem;
+}
+
+.error-notification-recovery {
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.error-notification-action {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #495057;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-notification-action:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.error-notification-action.primary {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: #fff;
+}
+
+.error-notification-action.primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+/* Scrollbar styling */
+.error-notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.error-notification-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.error-notification-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.error-notification-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .error-notification-container {
+    color: #e2e8f0;
+  }
+
+  .error-notification-header-bar {
+    background-color: #4a5568;
+    border-color: #4a5568;
+  }
+
+  .error-notification-count {
+    color: #e2e8f0;
+  }
+
+  .error-notification-dismiss-all {
+    color: #63b3ed;
+  }
+
+  .error-notification-dismiss-all:hover {
+    background-color: #2d3748;
+  }
+
+  .error-notification-list {
+    border-color: #4a5568;
+  }
+
+  .error-notification {
+    background-color: #2d3748;
+    border-bottom-color: #4a5568;
+  }
+
+  .error-notification-title {
+    color: #e2e8f0;
+  }
+
+  .error-notification-details {
+    color: #a0aec0;
+  }
+
+  .error-notification-toggle,
+  .error-notification-close {
+    color: #a0aec0;
+  }
+
+  .error-notification-toggle:hover,
+  .error-notification-close:hover {
+    background-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .error-notification-expanded {
+    background-color: #4a5568;
+    border-top-color: #4a5568;
+  }
+
+  .error-notification-expanded-content strong {
+    color: #e2e8f0;
+  }
+
+  .error-notification-expanded-content pre {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #fc8181;
+  }
+
+  .error-notification-timestamp {
+    color: #a0aec0;
+  }
+
+  .error-notification-recovery {
+    background-color: #4a5568;
+    border-top-color: #4a5568;
+  }
+
+  .error-notification-action {
+    background-color: #4a5568;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .error-notification-action:hover {
+    background-color: #2d3748;
+    border-color: #2d3748;
+  }
+
+  .error-notification-action.primary {
+    background-color: #3182ce;
+    border-color: #3182ce;
+  }
+
+  .error-notification-action.primary:hover {
+    background-color: #2c5282;
+    border-color: #2c5282;
+  }
+}

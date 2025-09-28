@@ -1,4 +1,5 @@
 import type { AIJudgment, Rubric, AIServiceError } from '@/types'
+import { errorHandler } from './error-handler'
 
 export interface AIJudgeConfig {
     apiKey: string
@@ -58,18 +59,55 @@ export class AIJudgeService {
                 const aiResponse = this.parseAIResponse(response)
                 return this.processJudgment(aiResponse, request.rubric)
             } catch (error) {
+                const aiError = error as AIServiceError;
+                
+                // Handle specific error types
+                if (aiError.statusCode === 401) {
+                    const authError = this.createAIServiceError('AI service authentication failed - check API key', false);
+                    authError.statusCode = 401;
+                    errorHandler.handleAIServiceError(authError, {
+                        operation: 'judge_explanation',
+                        attempt,
+                        maxRetries: this.config.maxRetries
+                    });
+                    throw authError;
+                }
+                
+                if (aiError.statusCode === 429) {
+                    const rateLimitError = this.createAIServiceError('AI service rate limit exceeded', true);
+                    rateLimitError.statusCode = 429;
+                    rateLimitError.retryable = true;
+                    errorHandler.handleAIServiceError(rateLimitError, {
+                        operation: 'judge_explanation',
+                        attempt,
+                        maxRetries: this.config.maxRetries
+                    });
+                }
+                
                 if (attempt === this.config.maxRetries) {
-                    throw this.createAIServiceError(
+                    const finalError = this.createAIServiceError(
                         `Failed to get valid AI response after ${this.config.maxRetries} attempts: ${error}`,
                         true
-                    )
+                    );
+                    errorHandler.handleAIServiceError(finalError, {
+                        operation: 'judge_explanation',
+                        totalAttempts: this.config.maxRetries,
+                        lastError: error
+                    });
+                    throw finalError;
                 }
+                
                 // Wait before retry (exponential backoff)
                 await this.delay(Math.pow(2, attempt - 1) * 1000)
             }
         }
 
-        throw this.createAIServiceError('Unexpected error in judgeExplanation', false)
+        const unexpectedError = this.createAIServiceError('Unexpected error in judgeExplanation', false);
+        errorHandler.handleAIServiceError(unexpectedError, {
+            operation: 'judge_explanation',
+            context: 'unexpected_error'
+        });
+        throw unexpectedError;
     }
 
     /**

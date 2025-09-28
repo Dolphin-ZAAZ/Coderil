@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ErrorNotificationContainer } from '@/components/ErrorNotification'
 import { ScoringService } from '@/services/scoring'
 import { AutoContinueService } from '@/services/auto-continue'
 import { useMediaQuery, useElectronAPI } from '@/hooks'
@@ -36,20 +38,7 @@ function App() {
     dismissWarning 
   } = useDependencyChecker()
 
-  useEffect(() => {
-    // Load data once electronAPI availability is determined
-    if (!isElectronAPILoading) {
-      if (isElectronAPIAvailable) {
-        loadKatas()
-        loadSettings()
-      } else {
-        console.warn('Running in browser mode - limited functionality available')
-        setIsLoading(false)
-      }
-    }
-  }, [isElectronAPIAvailable, isElectronAPILoading])
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       if (!window.electronAPI) {
         console.warn('ElectronAPI not available for loading settings');
@@ -61,13 +50,13 @@ function App() {
     } catch (error) {
       console.error('Failed to load settings:', error)
     }
-  }
+  }, [])
 
-  const loadKatas = async () => {
+  const loadKatas = useCallback(async () => {
+    console.log('=== LOADING KATAS FROM RENDERER ===')
+    setIsLoading(true)
+    
     try {
-      console.log('=== LOADING KATAS FROM RENDERER ===')
-      setIsLoading(true)
-      
       if (!window.electronAPI) {
         console.warn('ElectronAPI not available - running in browser mode')
         setKatas([])
@@ -78,14 +67,26 @@ function App() {
       const loadedKatas = await window.electronAPI.getKatas()
       console.log('Received katas from main process:', loadedKatas)
       setKatas(loadedKatas)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load katas:', error)
-      console.error('Error details:', error.message, error.stack)
-      setKatas([]) // Set empty array on error
+      setKatas([]) // Set empty array as fallback
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Load data once electronAPI availability is determined
+    if (!isElectronAPILoading) {
+      if (isElectronAPIAvailable) {
+        loadKatas()
+        loadSettings()
+      } else {
+        console.warn('Running in browser mode - limited functionality available')
+        setIsLoading(false)
+      }
+    }
+  }, [isElectronAPIAvailable, isElectronAPILoading, loadKatas, loadSettings])
 
   const handleKataSelect = async (kata: Kata) => {
     setSelectedKata(kata)
@@ -472,7 +473,9 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <ErrorBoundary>
+      <ErrorNotificationContainer />
+      <div className="app">
       <header className="app-header">
         <div className="header-content">
           <div className="header-title">
@@ -650,7 +653,8 @@ function App() {
           )}
         </div>
       </main>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
 

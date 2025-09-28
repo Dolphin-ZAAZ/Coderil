@@ -1,7 +1,8 @@
 import { spawn } from 'child_process'
 import { join, dirname } from 'path'
 import { writeFileSync, existsSync, readFileSync } from 'fs'
-import { ExecutionResult, TestResult, Language } from '@/types'
+import { ExecutionResult, TestResult, Language, ExecutionError, FileSystemError } from '@/types'
+import { errorHandler } from './error-handler'
 
 export class CodeExecutionService {
   private static instance: CodeExecutionService | null = null
@@ -32,6 +33,15 @@ export class CodeExecutionService {
 
       // Check if test file exists
       if (!existsSync(fullTestPath)) {
+        const fsError = new Error(`Test file not found: ${testFileName}`) as FileSystemError;
+        fsError.code = 'ENOENT';
+        fsError.path = fullTestPath;
+        errorHandler.handleFileSystemError(fsError, {
+          operation: 'python_execution',
+          kataPath,
+          testFileName
+        });
+
         return {
           success: false,
           output: '',
@@ -43,7 +53,22 @@ export class CodeExecutionService {
 
       // Write user code directly to the kata directory (overwrite entry.py)
       const userCodePath = join(kataPath, 'entry.py')
-      const originalCode = existsSync(userCodePath) ? readFileSync(userCodePath, 'utf8') : null
+      let originalCode: string | null = null
+      
+      try {
+        // Backup original code if it exists
+        if (existsSync(userCodePath)) {
+          originalCode = readFileSync(userCodePath, 'utf8')
+        }
+      } catch (error) {
+        const fsError = new Error(`Failed to read original code: ${error}`) as FileSystemError;
+        fsError.code = 'EACCES';
+        fsError.path = userCodePath;
+        errorHandler.handleFileSystemError(fsError, {
+          operation: 'python_execution_backup',
+          kataPath
+        });
+      }
       
       try {
         // Write user code temporarily
@@ -73,10 +98,36 @@ export class CodeExecutionService {
           score,
           duration: Date.now() - startTime
         }
+      } catch (error) {
+        const execError = new Error(`Python execution failed: ${error}`) as ExecutionError;
+        execError.stderr = error instanceof Error ? error.message : String(error);
+        errorHandler.handleExecutionError(execError, {
+          operation: 'python_execution',
+          kataPath,
+          language: 'python'
+        });
+        
+        return {
+          success: false,
+          output: '',
+          errors: execError.stderr,
+          testResults: [],
+          duration: Date.now() - startTime
+        }
       } finally {
         // Restore original code if it existed
         if (originalCode !== null) {
-          writeFileSync(userCodePath, originalCode)
+          try {
+            writeFileSync(userCodePath, originalCode)
+          } catch (error) {
+            const fsError = new Error(`Failed to restore original code: ${error}`) as FileSystemError;
+            fsError.code = 'EACCES';
+            fsError.path = userCodePath;
+            errorHandler.handleFileSystemError(fsError, {
+              operation: 'python_execution_restore',
+              kataPath
+            });
+          }
         }
       }
 

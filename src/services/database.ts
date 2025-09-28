@@ -2,7 +2,8 @@ import initSqlJs, { Database } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
-import { Attempt, Progress } from '@/types';
+import { Attempt, Progress, DatabaseError } from '@/types';
+import { errorHandler } from './error-handler';
 
 export class DatabaseService {
   private db: Database | null = null;
@@ -21,8 +22,20 @@ export class DatabaseService {
 
       // Try to load existing database file
       if (fs.existsSync(this.dbPath)) {
-        const filebuffer = fs.readFileSync(this.dbPath);
-        this.db = new SQL.Database(filebuffer);
+        try {
+          const filebuffer = fs.readFileSync(this.dbPath);
+          this.db = new SQL.Database(filebuffer);
+        } catch (error) {
+          const dbError = new Error(`Failed to load database file: ${error}`) as DatabaseError;
+          dbError.code = 'SQLITE_CORRUPT';
+          errorHandler.handleDatabaseError(dbError, { 
+            operation: 'load_database',
+            path: this.dbPath 
+          });
+          
+          // Create new database as fallback
+          this.db = new SQL.Database();
+        }
       } else {
         this.db = new SQL.Database();
       }
@@ -30,15 +43,29 @@ export class DatabaseService {
       this.initializeSchema();
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize database:', error);
+      const dbError = new Error(`Failed to initialize database: ${error}`) as DatabaseError;
+      dbError.code = 'SQLITE_CANTOPEN';
+      errorHandler.handleDatabaseError(dbError, { 
+        operation: 'initialize_database',
+        path: this.dbPath 
+      });
       throw error;
     }
   }
 
   private saveToFile(): void {
     if (this.db && this.initialized) {
-      const data = this.db.export();
-      fs.writeFileSync(this.dbPath, data);
+      try {
+        const data = this.db.export();
+        fs.writeFileSync(this.dbPath, data);
+      } catch (error) {
+        const dbError = new Error(`Failed to save database: ${error}`) as DatabaseError;
+        dbError.code = 'SQLITE_FULL';
+        errorHandler.handleDatabaseError(dbError, { 
+          operation: 'save_database',
+          path: this.dbPath 
+        });
+      }
     }
   }
 
@@ -60,62 +87,77 @@ export class DatabaseService {
   private initializeSchema(): void {
     if (!this.db) return;
 
-    // Create attempts table
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS attempts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        kata_id TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        language TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('passed', 'failed', 'timeout', 'error')),
-        score REAL NOT NULL DEFAULT 0,
-        duration_ms INTEGER NOT NULL DEFAULT 0,
-        code TEXT NOT NULL
-      )
-    `);
+    try {
+      // Create attempts table
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS attempts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kata_id TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          language TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('passed', 'failed', 'timeout', 'error')),
+          score REAL NOT NULL DEFAULT 0,
+          duration_ms INTEGER NOT NULL DEFAULT 0,
+          code TEXT NOT NULL
+        )
+      `);
 
-    // Create progress table
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS progress (
-        kata_id TEXT PRIMARY KEY,
-        last_code TEXT,
-        best_score REAL DEFAULT 0,
-        last_status TEXT,
-        attempts_count INTEGER DEFAULT 0,
-        last_attempt DATETIME
-      )
-    `);
+      // Create progress table
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS progress (
+          kata_id TEXT PRIMARY KEY,
+          last_code TEXT,
+          best_score REAL DEFAULT 0,
+          last_status TEXT,
+          attempts_count INTEGER DEFAULT 0,
+          last_attempt DATETIME
+        )
+      `);
 
-    // Create user_settings table
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS user_settings (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
+      // Create user_settings table
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS user_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Create indexes for better performance
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_attempts_kata_id ON attempts(kata_id)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_attempts_timestamp ON attempts(timestamp)`);
+      // Create indexes for better performance
+      this.db.run(`CREATE INDEX IF NOT EXISTS idx_attempts_kata_id ON attempts(kata_id)`);
+      this.db.run(`CREATE INDEX IF NOT EXISTS idx_attempts_timestamp ON attempts(timestamp)`);
 
-    // Insert default settings if they don't exist
-    const defaultSettings = [
-      ['auto_continue_enabled', 'false'],
-      ['theme', 'auto'],
-      ['editor_font_size', '14'],
-      ['auto_save_interval', '1000']
-    ];
+      // Insert default settings if they don't exist
+      const defaultSettings = [
+        ['auto_continue_enabled', 'false'],
+        ['theme', 'auto'],
+        ['editor_font_size', '14'],
+        ['auto_save_interval', '1000']
+      ];
 
-    for (const [key, value] of defaultSettings) {
-      try {
-        this.db.run(`INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)`, [key, value]);
-      } catch (error) {
-        console.warn('Failed to insert default setting:', key, error);
+      for (const [key, value] of defaultSettings) {
+        try {
+          this.db.run(`INSERT OR IGNORE INTO user_settings (key, value) VALUES (?, ?)`, [key, value]);
+        } catch (error) {
+          const dbError = new Error(`Failed to insert default setting ${key}: ${error}`) as DatabaseError;
+          dbError.code = 'SQLITE_CONSTRAINT';
+          errorHandler.handleDatabaseError(dbError, { 
+            operation: 'insert_default_setting',
+            key,
+            value 
+          });
+        }
       }
-    }
 
-    this.saveToFile();
+      this.saveToFile();
+    } catch (error) {
+      const dbError = new Error(`Failed to initialize database schema: ${error}`) as DatabaseError;
+      dbError.code = 'SQLITE_ERROR';
+      errorHandler.handleDatabaseError(dbError, { 
+        operation: 'initialize_schema' 
+      });
+      throw error;
+    }
   }
 
   public close(): void {

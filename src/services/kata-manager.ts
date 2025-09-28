@@ -14,6 +14,7 @@ import {
   validateRubric,
   FileSystemError
 } from '@/types';
+import { errorHandler } from './error-handler';
 
 export class KataManagerService {
   private katasDirectory: string;
@@ -41,7 +42,13 @@ export class KataManagerService {
   public async loadKatas(): Promise<Kata[]> {
     try {
       if (!fs.existsSync(this.katasDirectory)) {
-        console.warn(`Katas directory does not exist: ${this.katasDirectory}`);
+        const fsError = new Error(`Katas directory does not exist: ${this.katasDirectory}`) as FileSystemError;
+        fsError.code = 'ENOENT';
+        fsError.path = this.katasDirectory;
+        errorHandler.handleFileSystemError(fsError, {
+          operation: 'load_katas',
+          directory: this.katasDirectory
+        });
         return [];
       }
 
@@ -51,6 +58,7 @@ export class KataManagerService {
         .map(entry => entry.name);
 
       const katas: Kata[] = [];
+      const failedKatas: string[] = [];
 
       for (const dirName of kataDirectories) {
         try {
@@ -60,9 +68,22 @@ export class KataManagerService {
             katas.push(kata);
           }
         } catch (error) {
-          console.warn(`Failed to load kata from directory ${dirName}:`, error);
+          failedKatas.push(dirName);
+          const fsError = new Error(`Failed to load kata from directory ${dirName}: ${error}`) as FileSystemError;
+          fsError.code = 'KATA_LOAD_FAILED';
+          fsError.path = path.join(this.katasDirectory, dirName);
+          errorHandler.handleFileSystemError(fsError, {
+            operation: 'load_individual_kata',
+            kataDirectory: dirName,
+            recoverable: true
+          });
           // Continue loading other katas even if one fails
         }
+      }
+
+      // Log summary if some katas failed to load
+      if (failedKatas.length > 0) {
+        console.warn(`Failed to load ${failedKatas.length} kata(s): ${failedKatas.join(', ')}`);
       }
 
       return katas;
@@ -70,6 +91,10 @@ export class KataManagerService {
       const fsError = new Error(`Failed to scan katas directory: ${error}`) as FileSystemError;
       fsError.code = 'SCAN_FAILED';
       fsError.path = this.katasDirectory;
+      errorHandler.handleFileSystemError(fsError, {
+        operation: 'scan_katas_directory',
+        directory: this.katasDirectory
+      });
       throw fsError;
     }
   }

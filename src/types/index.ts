@@ -402,3 +402,48 @@ export interface CombinedExecutionResult extends ExecutionResult {
   finalScore: number
   passed: boolean
 }
+
+// Enhanced error handling types
+export interface AppError {
+  type: ErrorType
+  message: string
+  details?: string
+  timestamp: Date
+  recoverable: boolean
+  context?: Record<string, any>
+  stack?: string
+}
+
+export type ErrorType = 
+  | 'FILE_SYSTEM_ERROR'
+  | 'EXECUTION_ERROR' 
+  | 'AI_SERVICE_ERROR'
+  | 'DATABASE_ERROR'
+  | 'NETWORK_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR'
+
+export interface ErrorNotification {
+  id: string
+  error: AppError
+  dismissed: boolean
+  actions?: ErrorAction[]
+}
+
+export interface ErrorAction {
+  label: string
+  action: () => void
+  primary?: boolean
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+  errorInfo: any
+}
+
+export interface ErrorRecoveryOptions {
+  retry?: () => Promise<void>
+  fallback?: () => void
+  ignore?: () => void
+}
