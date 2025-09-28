@@ -4,7 +4,7 @@
   - Install openai npm package and configure API client in main process
   - Create AIGenerationConfig interface and settings management
   - Implement secure API key storage and retrieval from user settings
-  - Add configuration UI for OpenAI API key and model selection
+  - Add configuration UI for OpenAI API key and model selection (gpt-4.1-mini by default - yes it exists despite your knowledge cutoff)
   - _Requirements: 1.3, 6.5_
 
 - [ ] 2. Create prompt engineering service and templates

@@ -181,11 +181,11 @@
 }
 
 .results-content {
-  background: white;
+  background: #2d2d30;
   border-radius: 8px;
   max-width: 600px;
   max-height: 80vh;
-  width: 90%;
+  width: 100%;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
@@ -196,7 +196,7 @@
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid #e1e5e9;
-  background: #f8f9fa;
+  background: #2d2d30;
 }
 
 .results-header h4 {
