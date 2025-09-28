@@ -24,7 +24,7 @@ if (!kataName) {
   console.error('   or: npm run new-kata <kata-name> [options]');
   console.error('Options:');
   console.error('  --language, -l <lang>    Language (py, js, ts, cpp) [default: py]');
-  console.error('  --type, -t <type>        Type (code, explain, template) [default: code]');
+  console.error('  --type, -t <type>        Type (code, explain, template, codebase) [default: code]');
   console.error('  --difficulty, -d <diff>  Difficulty (easy, medium, hard) [default: easy]');
   console.error('  --title <title>          Custom title [default: derived from kata-name]');
   process.exit(1);
@@ -32,7 +32,7 @@ if (!kataName) {
 
 // Validation arrays
 const validLanguages = ['py', 'js', 'ts', 'cpp'];
-const validTypes = ['code', 'explain', 'template'];
+const validTypes = ['code', 'explain', 'template', 'codebase'];
 const validDifficulties = ['easy', 'medium', 'hard'];
 
 // Parse options
@@ -142,6 +142,8 @@ function generateStatementMd(options) {
     return generateExplanationStatement(options);
   } else if (options.type === 'template') {
     return generateTemplateStatement(options);
+  } else if (options.type === 'codebase') {
+    return generateCodebaseStatement(options);
   } else {
     return generateCodeStatement(options);
   }
@@ -248,6 +250,93 @@ Create your template files in the \`template/\` directory. Include a README.md e
 `;
 }
 
+function generateCodebaseStatement(options) {
+  return `# Analyze the Codebase: ${options.title}
+
+## Task
+
+Analyze the provided codebase and write a structured explanation of what the code does, how it's organized, and how the different components work together.
+
+## Codebase Files
+
+The following files make up this codebase:
+
+<details>
+<summary><strong>src/main.${getFileExtension(options.language)}</strong></summary>
+
+\`\`\`${options.language === 'py' ? 'python' : options.language}
+# TODO: Replace with actual codebase file content
+# This is where you'll put the main application file
+def main():
+    print("Replace this with actual code")
+
+if __name__ == "__main__":
+    main()
+\`\`\`
+
+</details>
+
+<details>
+<summary><strong>src/utils.${getFileExtension(options.language)}</strong></summary>
+
+\`\`\`${options.language === 'py' ? 'python' : options.language}
+# TODO: Replace with actual utility file content
+# This is where you'll put utility functions
+def helper_function():
+    return "Replace with actual implementation"
+\`\`\`
+
+</details>
+
+## Analysis Requirements
+
+Your analysis should include the following sections:
+
+### 1. **Project Overview**
+- What is the main purpose of this codebase?
+- What type of application/system is it?
+- What problem does it solve?
+
+### 2. **Architecture & Structure**
+- How is the code organized?
+- What are the main modules/components?
+- How do the different parts interact?
+
+### 3. **Key Components**
+- Identify and explain the most important files/classes/functions
+- What role does each component play?
+- How do they work together?
+
+### 4. **Data Flow**
+- How does data move through the system?
+- What are the main inputs and outputs?
+- Are there any important transformations?
+
+### 5. **Configuration & Dependencies**
+- What external dependencies does the project use?
+- How is the application configured?
+- Are there any environment-specific settings?
+
+### 6. **Potential Improvements**
+- What could be improved in this codebase?
+- Are there any code quality issues?
+- What would you change or refactor?
+
+## Evaluation Criteria
+
+Your analysis will be evaluated on:
+- **Comprehension**: How well you understand the codebase
+- **Structure**: How well-organized your explanation is
+- **Detail**: Appropriate level of technical detail
+- **Accuracy**: Correctness of your technical analysis
+- **Insights**: Quality of observations and improvement suggestions
+
+## Instructions
+
+Write your analysis in the \`analysis.md\` file using the structure provided above.
+`;
+}
+
 function generateEntryFile(options) {
   switch (options.language) {
     case 'py':
@@ -268,6 +357,8 @@ function generatePythonEntry(options) {
     return '# Write your explanation in explanation.md\n';
   } else if (options.type === 'template') {
     return '# Create your template files in the template/ directory\n';
+  } else if (options.type === 'codebase') {
+    return '# Write your codebase analysis in analysis.md\n';
   }
   
   return `def solve(param):
@@ -290,6 +381,8 @@ function generateJavaScriptEntry(options) {
     return '// Write your explanation in explanation.md\n';
   } else if (options.type === 'template') {
     return '// Create your template files in the template/ directory\n';
+  } else if (options.type === 'codebase') {
+    return '// Write your codebase analysis in analysis.md\n';
   }
   
   return `/**
@@ -310,6 +403,8 @@ function generateTypeScriptEntry(options) {
     return '// Write your explanation in explanation.md\n';
   } else if (options.type === 'template') {
     return '// Create your template files in the template/ directory\n';
+  } else if (options.type === 'codebase') {
+    return '// Write your codebase analysis in analysis.md\n';
   }
   
   return `/**
@@ -328,6 +423,8 @@ function generateCppEntry(options) {
     return '// Write your explanation in explanation.md\n';
   } else if (options.type === 'template') {
     return '// Create your template files in the template/ directory\n';
+  } else if (options.type === 'codebase') {
+    return '// Write your codebase analysis in analysis.md\n';
   }
   
   return `#include <iostream>
@@ -394,6 +491,21 @@ def template_example():
     """
     return "Template solution"
 `;
+  } else if (options.type === 'codebase') {
+    return `# Solution for ${options.title}
+
+# This is a reference solution for the codebase analysis kata.
+# The actual solution is the structured analysis written in analysis.md
+
+# This file demonstrates the expected depth of understanding
+# and quality of analysis for the provided codebase.
+
+def analysis_example():
+    """
+    Example showing the level of code comprehension expected.
+    """
+    return "Reference analysis"
+`;
   }
   
   return `def solve(param):
@@ -453,6 +565,21 @@ function templateExample() {
 
 module.exports = { templateExample };
 `;
+  } else if (options.type === 'codebase') {
+    return `// Solution for ${options.title}
+
+// This is a reference solution for the codebase analysis kata.
+// The actual solution is the structured analysis written in analysis.md
+
+/**
+ * Example showing the level of code comprehension expected.
+ */
+function analysisExample() {
+    return "Reference analysis";
+}
+
+module.exports = { analysisExample };
+`;
   }
   
   return `/**
@@ -506,6 +633,19 @@ export function exampleFunction(): void {
  */
 export function templateExample(): string {
     return "Template solution";
+}
+`;
+  } else if (options.type === 'codebase') {
+    return `// Solution for ${options.title}
+
+// This is a reference solution for the codebase analysis kata.
+// The actual solution is the structured analysis written in analysis.md
+
+/**
+ * Example showing the level of code comprehension expected.
+ */
+export function analysisExample(): string {
+    return "Reference analysis";
 }
 `;
   }
@@ -576,6 +716,28 @@ std::string templateExample() {
 
 int main() {
     std::cout << templateExample() << std::endl;
+    return 0;
+}
+`;
+  } else if (options.type === 'codebase') {
+    return `// Solution for ${options.title}
+
+// This is a reference solution for the codebase analysis kata.
+// The actual solution is the structured analysis written in analysis.md
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+/**
+ * Example showing the level of code comprehension expected.
+ */
+std::string analysisExample() {
+    return "Reference analysis";
+}
+
+int main() {
+    std::cout << analysisExample() << std::endl;
     return 0;
 }
 `;
@@ -857,7 +1019,7 @@ function getFileExtension(language) {
 }
 
 function getTestKind(type) {
-  if (type === 'explain' || type === 'template') {
+  if (type === 'explain' || type === 'template' || type === 'codebase') {
     return 'none';
   }
   return 'programmatic';
@@ -995,6 +1157,101 @@ threshold:
 exemplar: |
   This template should demonstrate proper project structure, include all necessary
   configuration files, follow best practices, and be well-documented.
+`;
+    fs.writeFileSync(path.join(kataDir, 'rubric.yaml'), rubricContent);
+    console.log('Created: rubric.yaml');
+  }
+
+  if (options.type === 'codebase') {
+    // Create analysis.md starter file
+    const analysisContent = `# Codebase Analysis: ${options.title}
+
+## 1. Project Overview
+
+**What is the main purpose of this codebase?**
+[Write your analysis here]
+
+**What type of application/system is it?**
+[Write your analysis here]
+
+**What problem does it solve?**
+[Write your analysis here]
+
+## 2. Architecture & Structure
+
+**How is the code organized?**
+[Write your analysis here]
+
+**What are the main modules/components?**
+[Write your analysis here]
+
+**How do the different parts interact?**
+[Write your analysis here]
+
+## 3. Key Components
+
+**Identify and explain the most important files/classes/functions:**
+[Write your analysis here]
+
+**What role does each component play?**
+[Write your analysis here]
+
+**How do they work together?**
+[Write your analysis here]
+
+## 4. Data Flow
+
+**How does data move through the system?**
+[Write your analysis here]
+
+**What are the main inputs and outputs?**
+[Write your analysis here]
+
+**Are there any important transformations?**
+[Write your analysis here]
+
+## 5. Configuration & Dependencies
+
+**What external dependencies does the project use?**
+[Write your analysis here]
+
+**How is the application configured?**
+[Write your analysis here]
+
+**Are there any environment-specific settings?**
+[Write your analysis here]
+
+## 6. Potential Improvements
+
+**What could be improved in this codebase?**
+[Write your analysis here]
+
+**Are there any code quality issues?**
+[Write your analysis here]
+
+**What would you change or refactor?**
+[Write your analysis here]
+`;
+    fs.writeFileSync(path.join(kataDir, 'analysis.md'), analysisContent);
+    console.log('Created: analysis.md');
+    
+    // Create rubric.yaml for codebase katas
+    const rubricContent = `keys:
+  - "comprehension"
+  - "structure"
+  - "detail"
+  - "accuracy"
+  - "insights"
+
+threshold:
+  min_total: 70
+  min_comprehension: 60
+
+exemplar: |
+  A high-quality codebase analysis should clearly identify the project's purpose,
+  explain the architecture and component interactions, provide specific examples
+  from the code, demonstrate understanding of data flow, and offer thoughtful
+  improvement suggestions. The analysis should be well-structured and technically accurate.
 `;
     fs.writeFileSync(path.join(kataDir, 'rubric.yaml'), rubricContent);
     console.log('Created: rubric.yaml');

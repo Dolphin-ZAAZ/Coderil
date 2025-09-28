@@ -17,6 +17,7 @@ Code Kata Electron App is a desktop application for practicing coding challenges
 1. **Code katas**: Traditional coding challenges with test cases
 2. **Explanation katas**: Write explanations that are judged by AI
 3. **Template katas**: Create project structures and boilerplate code
+4. **Codebase katas**: Analyze existing codebases and explain their structure, functionality, and design
 
 ## Target Users
 

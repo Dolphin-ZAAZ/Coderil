@@ -12,6 +12,7 @@ This guide provides comprehensive instructions for creating new coding challenge
 - [Creating Code Katas](#creating-code-katas)
 - [Creating Explanation Katas](#creating-explanation-katas)
 - [Creating Template Katas](#creating-template-katas)
+- [Creating Codebase Katas](#creating-codebase-katas)
 - [Testing Your Katas](#testing-your-katas)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
@@ -28,7 +29,7 @@ Katas are self-contained coding challenges stored in the `/katas/` directory. Ea
 
 ## Kata Types
 
-The application supports three types of katas:
+The application supports four types of katas:
 
 ### 1. Code Katas
 Traditional programming challenges where users write code to pass test cases.
@@ -47,6 +48,12 @@ Challenges where users create project structures, boilerplate code, or configura
 - **Focus**: Project setup, tooling, best practices
 - **Validation**: AI evaluation of structure and completeness
 - **Examples**: Docker setup, API boilerplate, build configurations
+
+### 4. Codebase Katas
+Challenges where users analyze existing codebases and write structured explanations of their functionality.
+- **Focus**: Code comprehension, architecture analysis, technical documentation
+- **Validation**: AI evaluation of analysis depth, accuracy, and structure
+- **Examples**: Analyze web server, explain microservice architecture, review API design
 
 ## Directory Structure
 
@@ -527,6 +534,234 @@ scoring:
     weight: 0.10
     description: "Template would work as a starting point"
 ```
+
+## Creating Codebase Katas
+
+Codebase katas focus on analyzing existing code and writing structured explanations of how it works.
+
+### Metadata Example
+
+```yaml
+slug: "simple-web-server"
+title: "Simple Web Server Analysis"
+language: "py"
+type: "codebase"
+difficulty: "easy"
+tags: ["web-server", "http", "analysis", "python"]
+entry: "analysis.md"
+test:
+  kind: "none"
+  file: ""
+timeout_ms: 0
+```
+
+### Statement Structure (`statement.md`)
+
+The statement should include the codebase files within collapsible sections:
+
+```markdown
+# Analyze the Codebase: Simple Web Server
+
+## Task
+
+Analyze the provided codebase and write a structured explanation of what the code does, how it's organized, and how the different components work together.
+
+## Codebase Files
+
+The following files make up this codebase:
+
+<details>
+<summary><strong>server.py</strong></summary>
+
+```python
+# Include the actual code here
+import http.server
+import socketserver
+
+class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Implementation here
+        pass
+```
+
+</details>
+
+<details>
+<summary><strong>static/style.css</strong></summary>
+
+```css
+/* Include CSS code here */
+body {
+    font-family: Arial, sans-serif;
+}
+```
+
+</details>
+
+## Analysis Requirements
+
+Your analysis should include the following sections:
+
+### 1. **Project Overview**
+- What is the main purpose of this codebase?
+- What type of application/system is it?
+- What problem does it solve?
+
+### 2. **Architecture & Structure**
+- How is the code organized?
+- What are the main modules/components?
+- How do the different parts interact?
+
+### 3. **Key Components**
+- Identify and explain the most important files/classes/functions
+- What role does each component play?
+- How do they work together?
+
+### 4. **Data Flow**
+- How does data move through the system?
+- What are the main inputs and outputs?
+- Are there any important transformations?
+
+### 5. **Configuration & Dependencies**
+- What external dependencies does the project use?
+- How is the application configured?
+- Are there any environment-specific settings?
+
+### 6. **Potential Improvements**
+- What could be improved in this codebase?
+- Are there any code quality issues?
+- What would you change or refactor?
+
+## Instructions
+
+Write your analysis in the `analysis.md` file using the structure provided above.
+```
+
+### Starter File (`analysis.md`)
+
+Provide a structured template for the analysis:
+
+```markdown
+# Codebase Analysis: [Project Name]
+
+## 1. Project Overview
+
+**What is the main purpose of this codebase?**
+[Write your analysis here]
+
+**What type of application/system is it?**
+[Write your analysis here]
+
+**What problem does it solve?**
+[Write your analysis here]
+
+## 2. Architecture & Structure
+
+**How is the code organized?**
+[Write your analysis here]
+
+**What are the main modules/components?**
+[Write your analysis here]
+
+**How do the different parts interact?**
+[Write your analysis here]
+
+## 3. Key Components
+
+**Identify and explain the most important files/classes/functions:**
+[Write your analysis here]
+
+**What role does each component play?**
+[Write your analysis here]
+
+**How do they work together?**
+[Write your analysis here]
+
+## 4. Data Flow
+
+**How does data move through the system?**
+[Write your analysis here]
+
+**What are the main inputs and outputs?**
+[Write your analysis here]
+
+**Are there any important transformations?**
+[Write your analysis here]
+
+## 5. Configuration & Dependencies
+
+**What external dependencies does the project use?**
+[Write your analysis here]
+
+**How is the application configured?**
+[Write your analysis here]
+
+**Are there any environment-specific settings?**
+[Write your analysis here]
+
+## 6. Potential Improvements
+
+**What could be improved in this codebase?**
+[Write your analysis here]
+
+**Are there any code quality issues?**
+[Write your analysis here]
+
+**What would you change or refactor?**
+[Write your analysis here]
+```
+
+### Rubric Configuration (`rubric.yaml`)
+
+```yaml
+keys:
+  - "comprehension"    # How well they understand the codebase
+  - "structure"        # How well-organized their analysis is
+  - "detail"          # Appropriate level of technical detail
+  - "accuracy"        # Correctness of technical analysis
+  - "insights"        # Quality of observations and suggestions
+
+threshold:
+  min_total: 70
+  min_comprehension: 60
+
+scoring:
+  comprehension:
+    weight: 0.35
+    description: "Understanding of codebase purpose, structure, and functionality"
+  
+  structure:
+    weight: 0.20
+    description: "Clear organization and logical flow of analysis"
+  
+  detail:
+    weight: 0.20
+    description: "Appropriate technical depth and specific examples"
+  
+  accuracy:
+    weight: 0.15
+    description: "Correctness of technical explanations and observations"
+  
+  insights:
+    weight: 0.10
+    description: "Quality of improvement suggestions and code quality observations"
+
+exemplar: |
+  A high-quality codebase analysis should clearly identify the project's purpose,
+  explain the architecture and component interactions, provide specific examples
+  from the code, demonstrate understanding of data flow, and offer thoughtful
+  improvement suggestions. The analysis should be well-structured and technically accurate.
+```
+
+### Best Practices for Codebase Katas
+
+1. **Choose Realistic Code**: Use actual, working code examples that represent real-world scenarios
+2. **Appropriate Complexity**: Match the codebase complexity to the difficulty level
+3. **Multiple Files**: Include 3-5 files to show different aspects (main logic, configuration, styling, etc.)
+4. **Clear Structure**: Organize code in a logical way that students can follow
+5. **Varied Languages**: Consider the target language and include relevant patterns
+6. **Documentation**: Include some comments but not over-document - let students analyze
+7. **Realistic Issues**: Include some areas for improvement to test critical thinking
 
 ## Testing Your Katas
 

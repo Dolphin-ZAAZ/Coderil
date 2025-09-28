@@ -1,0 +1,47 @@
+keys:
+  - "comprehension"    # How well they understand the codebase
+  - "structure"        # How well-organized their analysis is
+  - "detail"          # Appropriate level of technical detail
+  - "accuracy"        # Correctness of technical analysis
+  - "insights"        # Quality of observations and suggestions
+
+threshold:
+  min_total: 70       # Minimum total score to pass
+  min_comprehension: 60  # Must demonstrate basic understanding
+
+scoring:
+  comprehension:
+    weight: 0.35      # 35% of total score
+    description: "Understanding of codebase purpose, structure, and functionality"
+  
+  structure:
+    weight: 0.20      # 20% of total score
+    description: "Clear organization and logical flow of analysis"
+  
+  detail:
+    weight: 0.20      # 20% of total score
+    description: "Appropriate technical depth and specific examples"
+  
+  accuracy:
+    weight: 0.15      # 15% of total score
+    description: "Correctness of technical explanations and observations"
+  
+  insights:
+    weight: 0.10      # 10% of total score
+    description: "Quality of improvement suggestions and code quality observations"
+
+exemplar: |
+  A high-quality codebase analysis should:
+  
+  1. Clearly identify the project's main purpose and functionality
+  2. Explain the overall architecture and how components interact
+  3. Provide specific examples from the code to support explanations
+  4. Demonstrate understanding of data flow and key algorithms
+  5. Identify configuration patterns and dependency management
+  6. Offer thoughtful suggestions for improvements
+  7. Use appropriate technical terminology
+  8. Be well-structured and easy to follow
+  
+  The analysis should show that the student can read unfamiliar code,
+  understand its structure and purpose, and communicate that understanding
+  clearly to others.

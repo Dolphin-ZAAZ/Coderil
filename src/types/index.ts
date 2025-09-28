@@ -1,7 +1,7 @@
 // Core data models for the Code Kata App
 
 export type Language = 'py' | 'js' | 'ts' | 'cpp'
-export type KataType = 'code' | 'explain' | 'template'
+export type KataType = 'code' | 'explain' | 'template' | 'codebase'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type TestKind = 'programmatic' | 'io' | 'none'
 
@@ -171,7 +171,7 @@ export const validateLanguage = (language: string): language is Language => {
 }
 
 export const validateKataType = (type: string): type is KataType => {
-  return ['code', 'explain', 'template'].includes(type)
+  return ['code', 'explain', 'template', 'codebase'].includes(type)
 }
 
 export const validateDifficulty = (difficulty: string): difficulty is Difficulty => {
