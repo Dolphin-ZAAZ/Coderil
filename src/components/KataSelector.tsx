@@ -11,6 +11,8 @@ interface KataSelectorProps {
   onToggleSidebar?: () => void
   onKatasRefresh?: () => void
   onRandomKataSelect?: () => void
+  onGenerateKata: () => void;
+  onGenerateVariation: (sourceKata: Kata) => void;
   filters?: KataFilters
   onFilterChange?: (filters: KataFilters) => void
   autoContinueEnabled?: boolean
@@ -25,6 +27,8 @@ export function KataSelector({
   onToggleSidebar,
   onKatasRefresh,
   onRandomKataSelect,
+  onGenerateKata,
+  onGenerateVariation,
   filters: externalFilters,
   onFilterChange,
   autoContinueEnabled = false,
@@ -210,6 +214,9 @@ export function KataSelector({
         >
           Import/Export
         </button>
+        <button className="tab-button generate-ai-btn" onClick={onGenerateKata}>
+          ✨ Generate with AI
+        </button>
       </div>
 
       <div className="tab-content">
@@ -381,6 +388,18 @@ export function KataSelector({
                           ))}
                         </div>
                       )}
+                      <div className="kata-item-actions">
+                        <button
+                          className="generate-variation-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onGenerateVariation(kata);
+                          }}
+                          title="Generate a variation of this kata"
+                        >
+                          ✨ Vary
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

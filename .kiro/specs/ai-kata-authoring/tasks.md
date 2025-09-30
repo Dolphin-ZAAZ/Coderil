@@ -1,18 +1,30 @@
 # Implementation Plan
 
-- [ ] 1. Set up OpenAI API integration and configuration
+- [x] 1. Set up OpenAI API integration and configuration
+
+
+
+
+
   - Install openai npm package and configure API client in main process
   - Create AIGenerationConfig interface and settings management
   - Implement secure API key storage and retrieval from user settings
   - Add configuration UI for OpenAI API key and model selection (gpt-4.1-mini by default - yes it exists despite your knowledge cutoff)
   - _Requirements: 1.3, 6.5_
 
-- [ ] 2. Create prompt engineering service and templates
-  - Implement PromptEngineService with methods for each kata type
-  - Create prompt templates for code, explanation, and template katas
-  - Add few-shot examples for consistent AI output formatting
-  - Implement dynamic prompt building based on user requirements
-  - _Requirements: 1.3, 2.1, 2.2, 2.3, 2.4, 3.1, 3.3_
+- [x] 2. Create prompt engineering service and templates
+
+
+
+
+
+
+
+  - Implement PromptEngineService with methods for each kata type including multi-question, shortform, and multiple-choice
+  - Create prompt templates for code, explanation, template, multi-question, shortform, and multiple-choice katas
+  - Add few-shot examples for consistent AI output formatting across all kata types
+  - Implement dynamic prompt building based on user requirements and kata type routing
+  - _Requirements: 1.3, 2.1, 2.2, 2.3, 2.4, 2.7, 2.8, 2.9, 2.10, 3.1, 3.3, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
 - [ ] 3. Build AI response parser and content extractor
   - Create ResponseParserService to parse structured AI responses
@@ -37,11 +49,14 @@
 
 - [ ] 6. Build AI authoring dialog UI component
   - Create AIAuthoringDialog React component with form inputs
-  - Add language, difficulty, and kata type selection controls
+  - Add language, difficulty, and kata type selection controls (including all shortform types)
   - Add context control for users to provide additional context and files eg. pdf and image textbook snippets
   - Implement topic tags, constraints, and additional requirements inputs
-  - Add form validation and submission handling
-  - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3, 5.4, 5.5_
+  - Add multi-question specific controls (question count, types, passing score)
+  - Add shortform specific controls (question type, options count, case sensitivity)
+  - Add form validation and submission handling for all kata types
+  - Integrate with existing SettingsPanel for API key configuration
+  - _Requirements: 1.1, 1.2, 5.1, 5.2, 5.3, 5.4, 5.5, 8.1, 8.2, 8.8, 9.2_
 
 - [ ] 7. Implement generation preview and editing system
   - Create GenerationPreview component for reviewing generated content
@@ -51,11 +66,13 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 8. Create file generation and saving functionality
-  - Implement file generation logic for all kata types
+  - Implement file generation logic for all kata types including multi-question configurations
   - Add slug generation and conflict detection for existing katas
-  - Create directory structure creation and file writing
-  - Integrate with existing kata manager for immediate availability
-  - _Requirements: 1.4, 4.4, 4.5_
+  - Create directory structure creation and file writing for all supported formats
+  - Generate proper multiQuestion configurations for assessment katas
+  - Integrate with existing kata manager and MultiQuestionPanel/ShortformAnswerPanel components
+  - Ensure generated katas work with existing evaluation systems (ShortformEvaluatorService)
+  - _Requirements: 1.4, 4.4, 4.5, 8.1, 8.2, 8.8, 9.3_
 
 - [ ] 9. Add variation generation capabilities
   - Implement variation generation from existing katas
@@ -76,7 +93,9 @@
   - Create user-friendly error messages and recovery suggestions
   - Implement automatic retry for transient failures
   - Add error logging and debugging information
-  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - Integrate with existing ErrorBoundary and error notification system
+  - Ensure error handling works across all kata types and generation scenarios
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 9.1, 9.4_
 
 - [ ] 12. Add progress tracking and user feedback
   - Implement generation progress indicators and status updates
@@ -86,15 +105,29 @@
   - _Requirements: 1.3, 1.4, 6.1_
 
 - [ ] 13. Create comprehensive test suite
-  - Write unit tests for prompt engineering and response parsing
+  - Write unit tests for prompt engineering and response parsing for all kata types
   - Add integration tests for OpenAI API communication
-  - Create end-to-end tests for complete generation workflow
-  - Add validation tests for generated content quality
-  - _Requirements: 1.3, 1.4, 2.6, 4.1_
+  - Create end-to-end tests for complete generation workflow including multi-question katas
+  - Add validation tests for generated content quality across all supported formats
+  - Test integration with existing components (MultiQuestionPanel, ShortformAnswerPanel)
+  - Verify generated katas work with existing evaluation systems
+  - Test error handling integration with ErrorBoundary and notification systems
+  - _Requirements: 1.3, 1.4, 2.6, 4.1, 8.1, 8.2, 8.8, 9.1, 9.3_
 
-- [ ] 14. Implement advanced features and optimizations
+- [ ] 14. Integrate with existing application systems
+  - Ensure generated katas work seamlessly with AutoContinueService
+  - Integrate API key management with existing SettingsPanel
+  - Verify compatibility with existing MultiQuestionPanel and ShortformAnswerPanel components
+  - Test integration with existing error handling and notification systems
+  - Ensure generated multi-question katas work with ShortformEvaluatorService
+  - Validate that all generated kata types display correctly in existing UI components
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
+
+- [ ] 15. Implement advanced features and optimizations
   - Add batch generation for creating kata series
   - Implement template customization and user preferences
   - Add generation analytics and quality metrics
   - Create export functionality for generated prompts and responses
-  - _Requirements: 5.1, 5.2, 5.3, 7.4, 7.5_
+  - Add support for generating comprehensive exam katas with mixed content types
+  - Implement intelligent question type selection based on topic and difficulty
+  - _Requirements: 5.1, 5.2, 5.3, 7.4, 7.5, 8.1, 8.8_

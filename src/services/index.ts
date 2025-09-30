@@ -3,3 +3,8 @@ export { ProgressService } from './progress';
 export { KataManagerService } from './kata-manager';
 export { AIJudgeService } from './ai-judge';
 export { ShortformEvaluatorService } from './shortform-evaluator';
+export { AIConfigService } from './ai-config';
+export { PromptEngineService } from './prompt-engine';
+export { ResponseParserService } from './response-parser';
+export { ContentValidatorService } from './content-validator';
+export { AIAuthoringService } from './ai-authoring';

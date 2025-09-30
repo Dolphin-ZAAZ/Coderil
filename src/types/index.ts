@@ -194,6 +194,55 @@ export interface UserSettings {
   editorFontSize: number
   autoSaveInterval: number
   openaiApiKey?: string
+  aiGenerationConfig?: AIGenerationConfig
+}
+
+// AI Generation Configuration
+export interface AIGenerationConfig {
+  openaiApiKey: string
+  model: string
+  maxTokens: number
+  temperature: number
+  retryAttempts: number
+  timeoutMs: number
+}
+
+export interface KataGenerationRequest {
+  description: string
+  language: Language
+  difficulty: Difficulty
+  type: KataType
+  topics?: string[]
+  constraints?: string
+  tags?: string[]
+  generateHiddenTests: boolean
+  additionalRequirements?: string
+}
+
+export interface GeneratedKataContent {
+  metadata: KataMetadata
+  statement: string
+  starterCode: string
+  testCode: string
+  hiddenTestCode?: string
+  solutionCode: string
+  rubric?: Rubric
+  solutionFiles?: Record<string, string> // For template katas
+}
+
+export interface GenerationMetadata {
+  timestamp: Date
+  model: string
+  promptVersion: string
+  originalRequest: KataGenerationRequest
+  tokensUsed: number
+  generationTime: number
+}
+
+export interface GeneratedKata {
+  slug: string
+  content: GeneratedKataContent
+  generationMetadata: GenerationMetadata
 }
 
 export interface AutoContinueNotification {

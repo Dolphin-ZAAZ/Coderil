@@ -1,0 +1,104 @@
+.generation-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1010; /* Higher than dialog */
+}
+
+.generation-preview {
+  background: #2a2a2a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 95%;
+  height: 90vh;
+  max-width: 1200px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+}
+
+.generation-preview h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #eee;
+  text-align: center;
+}
+
+.preview-layout {
+  display: flex;
+  flex-grow: 1;
+  gap: 1rem;
+  min-height: 0; /* Important for flex child with overflow */
+}
+
+.file-list {
+  flex: 0 0 200px;
+  background-color: #202020;
+  border-radius: 4px;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.file-list h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #ccc;
+  font-size: 1.1rem;
+}
+
+.file-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li {
+  padding: 0.5rem;
+  color: #bbb;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-list li:hover {
+  background-color: #3a3a3a;
+}
+
+.file-list li.selected {
+  background-color: #007acc;
+  color: white;
+  font-weight: bold;
+}
+
+.editor-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Important for flex child with overflow */
+}
+
+.no-file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #888;
+    background-color: #1e1e1e;
+    border-radius: 4px;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #444;
+}

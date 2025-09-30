@@ -20,7 +20,7 @@ This feature involves creating an AI-powered automated authoring system for the 
 
 ### Requirement 2
 
-**User Story:** As a kata creator, I want the AI to generate appropriate starter code, test cases, and solution files for different programming languages, so that the generated katas are immediately usable and properly structured.
+**User Story:** As a kata creator, I want the AI to generate appropriate starter code, test cases, and solution files for different programming languages and kata types, so that the generated katas are immediately usable and properly structured.
 
 #### Acceptance Criteria
 
@@ -30,10 +30,14 @@ This feature involves creating an AI-powered automated authoring system for the 
 4. WHEN generating a C++ kata THEN the system SHALL create entry.cpp with function declarations, appropriate test structure, and solution.cpp with working implementation
 5. WHEN generating hidden tests THEN the system SHALL create additional test cases that are more comprehensive than public tests
 6. WHEN generating solutions THEN the system SHALL ensure the solution passes all generated test cases including hidden tests
+7. WHEN generating shortform katas THEN the system SHALL create proper multiQuestion configuration with appropriate question types
+8. WHEN generating multi-question katas THEN the system SHALL create comprehensive assessments with mixed question types (multiple-choice, shortform, one-liner, code, explanation)
+9. WHEN generating multiple-choice katas THEN the system SHALL create questions with plausible distractors and proper option structures
+10. WHEN generating one-liner katas THEN the system SHALL create fill-in-the-blank or completion-style questions with acceptable answer variations
 
 ### Requirement 3
 
-**User Story:** As a kata creator, I want the AI to generate explanation and template katas with proper rubrics and solutions, so that I can create diverse types of learning challenges beyond just coding problems.
+**User Story:** As a kata creator, I want the AI to generate explanation, template, and assessment katas with proper rubrics and solutions, so that I can create diverse types of learning challenges beyond just coding problems.
 
 #### Acceptance Criteria
 
@@ -42,6 +46,8 @@ This feature involves creating an AI-powered automated authoring system for the 
 3. WHEN generating a template kata THEN the system SHALL create statement.md describing the project structure to build
 4. WHEN generating a template kata THEN the system SHALL create rubric.yaml with structure and best practice criteria and solution files showing expected structure
 5. WHEN generating template katas THEN the system SHALL include example folder structures and configuration files in the solution
+6. WHEN generating codebase katas THEN the system SHALL create analysis-focused challenges with existing code to examine
+7. WHEN generating comprehensive exam katas THEN the system SHALL create multi-question assessments covering broad topic areas
 
 ### Requirement 4
 
@@ -90,3 +96,31 @@ This feature involves creating an AI-powered automated authoring system for the 
 3. WHEN creating difficulty progressions THEN the system SHALL adjust complexity appropriately
 4. WHEN generating series THEN the system SHALL create consistent naming and tagging across related katas
 5. WHEN variations are created THEN the system SHALL suggest logical ordering for learning progression
+
+### Requirement 8
+
+**User Story:** As a kata creator, I want the AI to generate comprehensive multi-question assessments and shortform quizzes, so that I can create efficient knowledge checks and comprehensive evaluations.
+
+#### Acceptance Criteria
+
+1. WHEN generating multi-question katas THEN the system SHALL create assessments with configurable passing scores and progress tracking
+2. WHEN creating multi-question assessments THEN the system SHALL support mixing different question types within a single kata
+3. WHEN generating shortform questions THEN the system SHALL create concise questions with multiple acceptable answer variations
+4. WHEN creating multiple-choice questions THEN the system SHALL generate plausible distractors and support both single and multi-select formats
+5. WHEN generating one-liner questions THEN the system SHALL create fill-in-the-blank or completion-style questions
+6. WHEN creating code questions within assessments THEN the system SHALL generate language-specific coding challenges with starter code
+7. WHEN generating explanation questions THEN the system SHALL create open-ended questions with minimum word requirements and rubrics
+8. WHEN creating assessment configurations THEN the system SHALL include proper scoring weights, explanations, and review capabilities
+
+### Requirement 9
+
+**User Story:** As a user, I want the AI authoring system to integrate with existing application features like auto-continue, error handling, and settings management, so that the generated content works seamlessly with the rest of the application.
+
+#### Acceptance Criteria
+
+1. WHEN AI generation fails THEN the system SHALL use the existing error handling system to display user-friendly messages
+2. WHEN generating katas THEN the system SHALL integrate with the settings panel for API key configuration and model selection
+3. WHEN katas are generated THEN the system SHALL work with the auto-continue system for seamless learning progression
+4. WHEN errors occur during generation THEN the system SHALL use error boundaries to prevent application crashes
+5. WHEN generating content THEN the system SHALL respect user preferences for themes, editor settings, and other configurations
+6. WHEN API keys are managed THEN the system SHALL use secure storage and validation through the existing settings system

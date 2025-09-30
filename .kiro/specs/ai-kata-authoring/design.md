@@ -37,6 +37,11 @@ The AI Authoring system integrates with the existing Code Kata Electron App thro
 - **Renderer Process**: Authoring UI and preview interface
 - **IPC Communication**: Secure data transfer between processes
 - **File System**: Integration with existing kata management
+- **Settings System**: API key management and configuration through SettingsPanel
+- **Error Handling**: Integration with ErrorBoundary and error notification system
+- **Auto-Continue**: Generated katas work with AutoContinueService for seamless progression
+- **Multi-Question System**: Support for existing MultiQuestionPanel and ShortformAnswerPanel components
+- **Evaluation System**: Integration with ShortformEvaluatorService for assessment katas
 
 ## Components and Interfaces
 
@@ -75,12 +80,16 @@ interface GenerationPreviewProps {
 interface GeneratedKataContent {
   metadata: KataMetadata;
   statement: string;
-  starterCode: string;
-  testCode: string;
+  starterCode?: string; // Optional for non-code katas
+  testCode?: string; // Optional for non-code katas
   hiddenTestCode?: string;
-  solutionCode: string;
+  solutionCode?: string; // Optional for assessment katas
   rubric?: Rubric;
   solutionFiles?: Record<string, string>; // For template katas
+  multiQuestionConfig?: MultiQuestionConfig; // For multi-question katas
+  shortformConfig?: ShortformConfig; // For legacy shortform katas
+  multipleChoiceConfig?: MultipleChoiceConfig; // For multiple choice katas
+  oneLinerConfig?: OneLinerConfig; // For one-liner katas
 }
 ```
 
@@ -96,6 +105,35 @@ interface VariationOptions {
   focusArea?: string;
   parameterChanges?: string;
   seriesName?: string;
+}
+```
+
+#### 4. Multi-Question Assessment Generator
+```typescript
+interface MultiQuestionGeneratorProps {
+  onAssessmentGenerated: (assessment: GeneratedKata) => void;
+  initialConfig?: Partial<MultiQuestionConfig>;
+}
+
+interface AssessmentGenerationOptions {
+  topicArea: string;
+  questionCount: number;
+  questionTypes: ('multiple-choice' | 'shortform' | 'one-liner' | 'code' | 'explanation')[];
+  difficulty: Difficulty;
+  passingScore: number;
+}
+```
+
+#### 5. Integration Components
+```typescript
+interface SettingsIntegrationProps {
+  aiConfig: AIGenerationConfig;
+  onConfigUpdate: (config: AIGenerationConfig) => void;
+}
+
+interface ErrorHandlingIntegrationProps {
+  onError: (error: AIServiceError) => void;
+  onRetry: () => void;
 }
 ```
 
@@ -129,8 +167,12 @@ interface PromptEngineService {
   buildCodeKataPrompt(request: KataGenerationRequest): string;
   buildExplanationKataPrompt(request: KataGenerationRequest): string;
   buildTemplateKataPrompt(request: KataGenerationRequest): string;
+  buildMultiQuestionKataPrompt(request: KataGenerationRequest): string;
+  buildShortformKataPrompt(request: KataGenerationRequest): string;
+  buildMultipleChoiceKataPrompt(request: KataGenerationRequest): string;
   buildVariationPrompt(sourceKata: Kata, options: VariationOptions): string;
   buildSolutionPrompt(statement: string, language: Language): string;
+  buildKataPrompt(request: KataGenerationRequest): string; // Dynamic routing
 }
 ```
 
@@ -203,6 +245,22 @@ interface AIGenerationConfig {
   retryAttempts: number;
   timeoutMs: number;
 }
+
+interface MultiQuestionGenerationRequest extends KataGenerationRequest {
+  questionCount: number;
+  questionTypes: ('multiple-choice' | 'shortform' | 'one-liner' | 'code' | 'explanation')[];
+  passingScore: number;
+  allowReview: boolean;
+  showProgressBar: boolean;
+}
+
+interface ShortformGenerationRequest extends KataGenerationRequest {
+  questionType: 'shortform' | 'multiple-choice' | 'one-liner';
+  maxLength?: number;
+  caseSensitive?: boolean;
+  allowMultiple?: boolean; // For multiple choice
+  optionCount?: number; // For multiple choice
+}
 ```
 
 ### Prompt Templates
@@ -223,6 +281,9 @@ interface PromptLibrary {
   codeKata: PromptTemplate;
   explanationKata: PromptTemplate;
   templateKata: PromptTemplate;
+  multiQuestionKata: PromptTemplate;
+  shortformKata: PromptTemplate;
+  multipleChoiceKata: PromptTemplate;
   variation: PromptTemplate;
   solution: PromptTemplate;
 }
@@ -314,8 +375,34 @@ class RetryStrategy {
 - **Batch Operations**: Support generating multiple related katas
 - **Templates**: Provide common kata templates for quick generation
 
+### Integration with Existing Systems
+
+#### Multi-Question and Shortform Support
+The AI authoring system must generate katas that work seamlessly with the existing multi-question infrastructure:
+
+- **MultiQuestionPanel Component**: Generated multi-question katas must use the existing UI component
+- **ShortformAnswerPanel Component**: Generated shortform katas must work with the existing answer panel
+- **ShortformEvaluatorService**: Generated assessment katas must integrate with the existing evaluation system
+- **MultiQuestion Configuration**: Generated katas must use the proper `multiQuestion` metadata structure
+
+#### Settings and Configuration Integration
+- **SettingsPanel Integration**: API key management through existing settings UI
+- **AIGenerationConfig**: Integration with existing user settings and preferences
+- **Model Selection**: Support for existing model configuration (gpt-4.1-mini default)
+
+#### Error Handling Integration
+- **ErrorBoundary**: Generated content must work within existing error boundary system
+- **Error Notification**: API failures must use existing error notification infrastructure
+- **Graceful Degradation**: Failures must not crash existing application components
+
+#### Auto-Continue Integration
+- **AutoContinueService**: Generated katas must work with existing auto-continue functionality
+- **Progress Tracking**: Generated katas must integrate with existing progress tracking
+- **Kata Selection**: Generated katas must be available for auto-continue selection
+
 ### Security Considerations
-- **API Key Management**: Secure storage and handling of OpenAI API keys
+- **API Key Management**: Secure storage and handling of OpenAI API keys through existing settings system
 - **Input Sanitization**: Validate and sanitize user inputs before API calls
 - **Output Validation**: Validate AI-generated content before execution
 - **Sandboxing**: Execute generated code in isolated environments
+- **Integration Security**: Ensure generated content doesn't break existing security measures

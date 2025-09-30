@@ -14,6 +14,7 @@ import {
   MultiQuestionConfig,
   MultiQuestionSolution,
   ValidationResult,
+  GeneratedKataContent,
   validateKataMetadata,
   validateKataStructure,
   validateRubric,
@@ -966,5 +967,79 @@ export class KataManagerService {
 
     // Return solution object if it has any content
     return Object.keys(solution).length > 0 ? solution : undefined;
+  }
+
+  /**
+   * Saves a newly generated kata to the file system.
+   */
+  public async saveGeneratedKata(slug: string, content: GeneratedKataContent): Promise<void> {
+    const kataDir = path.join(this.katasDirectory, slug);
+
+    if (fs.existsSync(kataDir)) {
+      // In a real implementation, we might prompt the user to overwrite.
+      // For now, we'll throw an error to prevent accidental data loss.
+      const error = new Error(`A kata with the slug '${slug}' already exists.`) as FileSystemError;
+      error.code = 'EEXIST';
+      throw error;
+    }
+
+    try {
+      fs.mkdirSync(kataDir, { recursive: true });
+
+      // If there's a multi-question config, embed it into the metadata before saving.
+      if (content.multiQuestionConfig) {
+        (content.metadata as any).multiQuestion = content.multiQuestionConfig;
+      }
+
+      // Write meta.yaml
+      const metaYaml = yaml.dump(content.metadata);
+      fs.writeFileSync(path.join(kataDir, 'meta.yaml'), metaYaml);
+
+      // Write statement.md
+      if (content.statement) {
+        fs.writeFileSync(path.join(kataDir, 'statement.md'), content.statement);
+      }
+
+      // Write code files if they exist
+      const ext = this.getFileExtension(content.metadata.language);
+      if (content.starterCode) {
+        fs.writeFileSync(path.join(kataDir, content.metadata.entry || `entry.${ext}`), content.starterCode);
+      }
+      if (content.testCode) {
+        fs.writeFileSync(path.join(kataDir, content.metadata.test?.file || `tests.${ext}`), content.testCode);
+      }
+      if (content.solutionCode) {
+        fs.writeFileSync(path.join(kataDir, content.metadata.solution || `solution.${ext}`), content.solutionCode);
+      }
+      if (content.hiddenTestCode) {
+        fs.writeFileSync(path.join(kataDir, `hidden_tests.${ext}`), content.hiddenTestCode);
+      }
+
+      // Write rubric.yaml if it exists
+      if (content.rubric) {
+        const rubricYaml = yaml.dump(content.rubric);
+        fs.writeFileSync(path.join(kataDir, 'rubric.yaml'), rubricYaml);
+      }
+
+      // Handle template files
+      if (content.metadata.type === 'template' && content.solutionFiles) {
+          const templateDir = path.join(kataDir, 'template');
+          fs.mkdirSync(templateDir, { recursive: true });
+          for (const [filePath, fileContent] of Object.entries(content.solutionFiles)) {
+              const fullPath = path.join(templateDir, filePath);
+              fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+              fs.writeFileSync(fullPath, fileContent);
+          }
+      }
+
+    } catch (error) {
+      // If any part of the process fails, clean up the partially created directory.
+      if (fs.existsSync(kataDir)) {
+        fs.rmSync(kataDir, { recursive: true, force: true });
+      }
+      const fsError = new Error(`Failed to save generated kata '${slug}': ${error}`) as FileSystemError;
+      fsError.code = 'SAVE_FAILED';
+      throw fsError;
+    }
   }
 }
