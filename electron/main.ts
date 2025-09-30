@@ -779,6 +779,54 @@ ipcMain.handle('refresh-katas', async () => {
   }
 })
 
+ipcMain.handle('generate-kata-variation', async (_event, sourceKata: any, options: any) => {
+  try {
+    console.log('Generating variation for kata:', sourceKata.slug);
+    const { AIAuthoringService } = await import('../src/services/ai-authoring');
+    const authoringService = AIAuthoringService.getInstance();
+    // Note: The generateVariation method in the service is currently a placeholder.
+    const generatedContent = await authoringService.generateVariation(sourceKata, options);
+    console.log('Kata variation content generated successfully.');
+    return { success: true, content: generatedContent };
+  } catch (error: any) {
+    console.error('Failed to generate kata variation:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('generate-kata', async (_event, request: any) => {
+  try {
+    console.log('Generating new kata with request:', request.description);
+    const { AIAuthoringService } = await import('../src/services/ai-authoring');
+    const authoringService = AIAuthoringService.getInstance();
+    const generatedContent = await authoringService.generateKata(request);
+    console.log('Kata content generated successfully.');
+    return { success: true, content: generatedContent };
+  } catch (error: any) {
+    console.error('Failed to generate kata:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-generated-kata', async (_event, slug: string, content: any) => {
+  try {
+    console.log('Saving generated kata:', slug);
+    const { KataManagerService } = await import('../src/services/kata-manager');
+    const katasPath = process.env.VITE_DEV_SERVER_URL
+      ? join(process.cwd(), 'katas')
+      : join(process.resourcesPath, 'katas');
+
+    const kataManager = KataManagerService.getInstance(katasPath);
+    await kataManager.saveGeneratedKata(slug, content);
+
+    console.log('Kata saved successfully:', slug);
+    return { success: true, slug: slug };
+  } catch (error: any) {
+    console.error('Failed to save generated kata:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // File dialog handlers
 ipcMain.handle('open-file-dialog', async () => {
   try {

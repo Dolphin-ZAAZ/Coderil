@@ -80,6 +80,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testOpenAIConnection: (apiKey?: string) => ipcRenderer.invoke('test-openai-connection', apiKey),
   getAvailableModels: () => ipcRenderer.invoke('get-available-models'),
   validateAiConfig: (config: any) => ipcRenderer.invoke('validate-ai-config', config),
+
+  // AI Kata Authoring
+  generateKata: (request: any) => ipcRenderer.invoke('generate-kata', request),
+  saveGeneratedKata: (slug: string, content: any) => ipcRenderer.invoke('save-generated-kata', slug, content),
+  generateKataVariation: (sourceKata: any, options: any) => ipcRenderer.invoke('generate-kata-variation', sourceKata, options),
 })
 
 console.log('Preload script completed successfully')
@@ -123,6 +128,9 @@ interface ElectronAPI {
   testOpenAIConnection: (apiKey?: string) => Promise<{ success: boolean, error?: string, models?: string[] }>
   getAvailableModels: () => Promise<string[]>
   validateAiConfig: (config: any) => Promise<{ isValid: boolean, errors: string[] }>
+  generateKata: (request: any) => Promise<{ success: boolean, content?: any, error?: string }>
+  saveGeneratedKata: (slug: string, content: any) => Promise<{ success: boolean, slug?: string, error?: string }>
+  generateKataVariation: (sourceKata: any, options: any) => Promise<{ success: boolean, content?: any, error?: string }>
 }
 
 declare global {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel } from '@/components'
+import { GeneratedKataContent, KataGenerationRequest } from '@/types/ai-authoring'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel, AIAuthoringDialog, GenerationPreview } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -29,6 +30,14 @@ function App() {
   const [multiQuestionAnswers, setMultiQuestionAnswers] = useState<Record<string, string | string[]>>({})
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // AI Authoring State
+  const [isAuthoringDialogOpen, setIsAuthoringDialogOpen] = useState(false);
+  const [isVariationDialogOpen, setIsVariationDialogOpen] = useState(false);
+  const [sourceKataForVariation, setSourceKataForVariation] = useState<Kata | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [generatedKataContent, setGeneratedKataContent] = useState<GeneratedKataContent | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const scoringService = ScoringService.getInstance()
   const autoContinueService = AutoContinueService.getInstance()
@@ -351,6 +360,110 @@ function App() {
     }
   }
 
+  const handleOpenAuthoringDialog = () => {
+    setIsAuthoringDialogOpen(true);
+  };
+
+  const handleOpenVariationDialog = (sourceKata: Kata) => {
+    setSourceKataForVariation(sourceKata);
+    setIsVariationDialogOpen(true);
+  };
+
+  const handleGenerateVariation = async (sourceKata: Kata, options: any) => {
+    setIsVariationDialogOpen(false);
+    setIsGenerating(true);
+    setGeneratedKataContent(null);
+
+    try {
+      if (!window.electronAPI) {
+        console.error("Electron API not available for variation generation.");
+        return;
+      }
+      const result = await window.electronAPI.generateKataVariation(sourceKata, options);
+
+      if (result.success && result.content) {
+        setGeneratedKataContent(result.content);
+        setIsPreviewOpen(true);
+      } else {
+        console.error("Failed to generate kata variation:", result.error);
+      }
+    } catch (error) {
+      console.error("Error during kata variation generation:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateKata = async (request: KataGenerationRequest) => {
+    setIsAuthoringDialogOpen(false);
+    setIsGenerating(true);
+    setGeneratedKataContent(null);
+
+    try {
+      if (!window.electronAPI) {
+        console.error("Electron API not available for kata generation.");
+        // TODO: Show an error notification
+        return;
+      }
+
+      const result = await window.electronAPI.generateKata(request);
+
+      if (result.success && result.content) {
+        setGeneratedKataContent(result.content);
+        setIsPreviewOpen(true);
+      } else {
+        console.error("Failed to generate kata:", result.error);
+        // TODO: Show an error notification to the user
+      }
+    } catch (error) {
+      console.error("Error during kata generation:", error);
+      // TODO: Show an error notification
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleApproveGeneratedKata = async (content: GeneratedKataContent) => {
+    setIsPreviewOpen(false);
+
+    try {
+      if (!window.electronAPI) {
+        console.error("Electron API not available for saving kata.");
+        return;
+      }
+
+      if (!content.metadata.slug) {
+        throw new Error("Generated content is missing a slug.");
+      }
+
+      const result = await window.electronAPI.saveGeneratedKata(content.metadata.slug, content);
+
+      if (result.success) {
+        console.log("Kata saved successfully:", result.slug);
+        await loadKatas();
+      } else {
+        console.error("Failed to save kata:", result.error);
+      }
+    } catch (error) {
+      console.error("Error saving generated kata:", error);
+    }
+  };
+
+  const handleCloseAuthoringDialog = () => {
+    setIsAuthoringDialogOpen(false);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setGeneratedKataContent(null);
+  };
+
+  const handleRegenerate = () => {
+    setIsPreviewOpen(false);
+    setGeneratedKataContent(null);
+    setIsAuthoringDialogOpen(true);
+  };
+
   const handleSubmit = async () => {
     if (!kataDetails || !selectedKata) return
     
@@ -669,6 +782,33 @@ function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      <AIAuthoringDialog
+        isOpen={isAuthoringDialogOpen}
+        onClose={handleCloseAuthoringDialog}
+        onGenerate={handleGenerateKata}
+      />
+
+      <VariationGeneratorDialog
+        isOpen={isVariationDialogOpen}
+        sourceKata={sourceKataForVariation}
+        onClose={() => setIsVariationDialogOpen(false)}
+        onGenerate={handleGenerateVariation}
+      />
+
+      <GenerationPreview
+        generatedContent={generatedKataContent}
+        onApprove={handleApproveGeneratedKata}
+        onRegenerate={handleRegenerate}
+        onCancel={handleClosePreview}
+      />
+
+      {isGenerating && (
+        <div className="generation-loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>Generating Kata...</p>
+        </div>
+      )}
       
       <main className="app-main">
         {isSidebarCollapsed && (
@@ -694,6 +834,8 @@ function App() {
             onToggleSidebar={() => setIsSidebarCollapsed(true)}
             onKatasRefresh={loadKatas}
             onRandomKataSelect={handleRandomKataSelect}
+            onGenerateKata={handleOpenAuthoringDialog}
+            onGenerateVariation={handleOpenVariationDialog}
             filters={filters}
             onFilterChange={setFilters}
             autoContinueEnabled={autoContinueEnabled}
