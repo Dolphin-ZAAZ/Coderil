@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
-import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel } from '@/components'
+import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel, AIAuthoringDialog } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -27,6 +27,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [shortformAnswer, setShortformAnswer] = useState<string | string[]>('')
   const [multiQuestionAnswers, setMultiQuestionAnswers] = useState<Record<string, string | string[]>>({})
+  const [showAIDialog, setShowAIDialog] = useState(false)
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
@@ -233,6 +234,20 @@ function App() {
     setMultiQuestionAnswers(answers)
     // Submission will be triggered by useEffect when multiQuestionAnswers changes
   }, [])
+
+  const handleGenerateKata = () => {
+    setShowAIDialog(true)
+  }
+
+  const handleAIDialogClose = () => {
+    setShowAIDialog(false)
+  }
+
+  const handleKataGenerated = () => {
+    // Refresh the kata list after generation
+    loadKatas()
+    setShowAIDialog(false)
+  }
 
   const handleRandomKataSelect = async () => {
     if (!selectedKata || !isElectronAPIAvailable) return
@@ -642,6 +657,14 @@ function App() {
           </div>
           <div className="header-controls">
             <button 
+              className="generate-kata-button"
+              onClick={handleGenerateKata}
+              aria-label="Generate new kata with AI"
+              disabled={!isElectronAPIAvailable}
+            >
+              ✨ Generate Kata
+            </button>
+            <button 
               className="settings-button"
               onClick={() => setIsSettingsOpen(true)}
               aria-label="Open settings"
@@ -668,6 +691,12 @@ function App() {
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      <AIAuthoringDialog
+        isOpen={showAIDialog}
+        onClose={handleAIDialogClose}
+        onKataGenerated={handleKataGenerated}
       />
       
       <main className="app-main">

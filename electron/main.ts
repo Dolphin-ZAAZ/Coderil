@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import OpenAI from 'openai'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -879,25 +878,26 @@ ipcMain.handle('test-openai-connection', async (_event, apiKey?: string) => {
     }
     
     // Create OpenAI client with the key
-    const openai = new OpenAI({
-      apiKey: keyToTest
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${keyToTest}`,
+        'Content-Type': 'application/json'
+      }
     })
     
-    // Make a simple API call to test the connection
-    const response = await openai.models.list()
-    
-    if (response.data && response.data.length > 0) {
+    if (response.ok) {
+      const data = await response.json()
+      const models = data.data?.map((model: any) => model.id) || []
       console.log('OpenAI connection test successful')
-      return { success: true, models: response.data.map(model => model.id) }
+      return { success: true, models }
     } else {
-      return { success: false, error: 'No models returned from API' }
+      console.log('OpenAI connection test failed:', response.status, response.statusText)
+      return { success: false, error: `API error: ${response.status} ${response.statusText}` }
     }
   } catch (error: any) {
-    console.error('OpenAI connection test failed:', error)
-    return { 
-      success: false, 
-      error: error.message || 'Connection test failed'
-    }
+    console.error('Failed to test OpenAI connection:', error)
+    return { success: false, error: error.message }
   }
 })
 
@@ -905,12 +905,30 @@ ipcMain.handle('get-available-models', async () => {
   try {
     const { AIConfigService } = await import('../src/services/ai-config')
     const aiConfigService = AIConfigService.getInstance()
-    const models = aiConfigService.getAvailableModels()
-    console.log('Retrieved available models:', models.length)
-    return models
+    const config = await aiConfigService.getConfig()
+    
+    if (!config.openaiApiKey) {
+      return []
+    }
+    
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.openaiApiKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      const models = data.data?.map((model: any) => model.id) || []
+      return models.filter((model: string) => model.includes('gpt'))
+    }
+    
+    return []
   } catch (error: any) {
     console.error('Failed to get available models:', error)
-    return ['gpt-4.1-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+    return []
   }
 })
 
@@ -919,24 +937,33 @@ ipcMain.handle('validate-ai-config', async (_event, config: any) => {
     const { AIConfigService } = await import('../src/services/ai-config')
     const aiConfigService = AIConfigService.getInstance()
     const validation = aiConfigService.validateConfig(config)
-    console.log('AI config validation:', validation.isValid ? 'passed' : 'failed')
     return validation
   } catch (error: any) {
     console.error('Failed to validate AI config:', error)
-    return { isValid: false, errors: ['Validation failed'] }
+    return { isValid: false, errors: [error.message] }
   }
 })
 
 // AI Kata Generation IPC handlers
 ipcMain.handle('generate-kata', async (_event, request: any) => {
   try {
-    console.log('Generating kata:', request)
+    console.log('Generating kata:', { 
+      type: request.type, 
+      language: request.language, 
+      difficulty: request.difficulty 
+    })
+    
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    const result = await aiAuthoringService.generateKata(request)
-    console.log('Kata generation completed:', result.slug)
-    return result
+    const generatedKata = await aiAuthoringService.generateKata(request)
+    
+    console.log('Kata generation completed:', {
+      slug: generatedKata.slug,
+      tokensUsed: generatedKata.generationMetadata.tokensUsed
+    })
+    
+    return generatedKata
   } catch (error: any) {
     console.error('Failed to generate kata:', error)
     throw error
@@ -945,13 +972,19 @@ ipcMain.handle('generate-kata', async (_event, request: any) => {
 
 ipcMain.handle('generate-variation', async (_event, sourceKata: any, options: any) => {
   try {
-    console.log('Generating kata variation:', sourceKata.slug, options)
+    console.log('Generating variation for kata:', sourceKata.slug, options)
+    
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    const result = await aiAuthoringService.generateVariation(sourceKata, options)
-    console.log('Variation generation completed:', result.slug)
-    return result
+    const variation = await aiAuthoringService.generateVariation(sourceKata, options)
+    
+    console.log('Variation generation completed:', {
+      slug: variation.slug,
+      tokensUsed: variation.generationMetadata.tokensUsed
+    })
+    
+    return variation
   } catch (error: any) {
     console.error('Failed to generate variation:', error)
     throw error
@@ -960,27 +993,32 @@ ipcMain.handle('generate-variation', async (_event, sourceKata: any, options: an
 
 ipcMain.handle('validate-generated-content', async (_event, content: any) => {
   try {
-    console.log('Validating generated content')
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    const result = await aiAuthoringService.validateGeneration(content)
-    console.log('Content validation completed:', result.isValid ? 'valid' : 'invalid')
-    return result
+    const validation = await aiAuthoringService.validateGeneration(content)
+    return validation
   } catch (error: any) {
     console.error('Failed to validate generated content:', error)
-    throw error
+    return { isValid: false, errors: [error.message], warnings: [] }
   }
 })
 
 ipcMain.handle('save-generated-kata', async (_event, content: any, conflictResolution?: any) => {
   try {
-    console.log('Saving generated kata:', content.metadata.slug)
+    console.log('Saving generated kata:', content.metadata?.slug)
+    
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
     const result = await aiAuthoringService.saveGeneratedKata(content, conflictResolution)
-    console.log('Kata saved successfully:', result.slug, 'at', result.path)
+    
+    console.log('Generated kata saved successfully:', {
+      slug: result.slug,
+      path: result.path,
+      filesCreated: result.filesCreated.length
+    })
+    
     return result
   } catch (error: any) {
     console.error('Failed to save generated kata:', error)
@@ -990,12 +1028,23 @@ ipcMain.handle('save-generated-kata', async (_event, content: any, conflictResol
 
 ipcMain.handle('generate-and-save-kata', async (_event, request: any, conflictResolution?: any) => {
   try {
-    console.log('Generating and saving kata:', request)
+    console.log('Generating and saving kata:', { 
+      type: request.type, 
+      language: request.language, 
+      difficulty: request.difficulty 
+    })
+    
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
     const result = await aiAuthoringService.generateAndSaveKata(request, conflictResolution)
-    console.log('Kata generated and saved:', result.kata.slug)
+    
+    console.log('Kata generated and saved successfully:', {
+      slug: result.kata.slug,
+      path: result.fileResult.path,
+      tokensUsed: result.kata.generationMetadata.tokensUsed
+    })
+    
     return result
   } catch (error: any) {
     console.error('Failed to generate and save kata:', error)
@@ -1009,7 +1058,6 @@ ipcMain.handle('check-slug-exists', async (_event, slug: string) => {
     const aiAuthoringService = AIAuthoringService.getInstance()
     
     const exists = aiAuthoringService.slugExists(slug)
-    console.log('Slug exists check:', slug, exists)
     return exists
   } catch (error: any) {
     console.error('Failed to check slug existence:', error)
@@ -1023,7 +1071,6 @@ ipcMain.handle('generate-unique-slug', async (_event, baseSlug: string) => {
     const aiAuthoringService = AIAuthoringService.getInstance()
     
     const uniqueSlug = aiAuthoringService.generateUniqueSlug(baseSlug)
-    console.log('Generated unique slug:', baseSlug, '->', uniqueSlug)
     return uniqueSlug
   } catch (error: any) {
     console.error('Failed to generate unique slug:', error)
@@ -1036,7 +1083,8 @@ ipcMain.handle('get-generation-progress', async () => {
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    return aiAuthoringService.getCurrentProgress()
+    const progress = aiAuthoringService.getCurrentProgress()
+    return progress
   } catch (error: any) {
     console.error('Failed to get generation progress:', error)
     return null
@@ -1048,7 +1096,8 @@ ipcMain.handle('get-session-token-usage', async () => {
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    return aiAuthoringService.getSessionTokenUsage()
+    const usage = aiAuthoringService.getSessionTokenUsage()
+    return usage
   } catch (error: any) {
     console.error('Failed to get session token usage:', error)
     return { promptTokens: 0, completionTokens: 0, totalTokens: 0, estimatedCost: 0 }
@@ -1061,7 +1110,6 @@ ipcMain.handle('reset-session-token-usage', async () => {
     const aiAuthoringService = AIAuthoringService.getInstance()
     
     aiAuthoringService.resetSessionTokenUsage()
-    console.log('Session token usage reset')
     return true
   } catch (error: any) {
     console.error('Failed to reset session token usage:', error)

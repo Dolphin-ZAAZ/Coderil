@@ -6,7 +6,8 @@ import {
   KataType, 
   AIGenerationConfig,
   GeneratedKata,
-  GenerationProgress
+  GenerationProgress,
+  Kata
 } from '@/types'
 // AI services are accessed via IPC in Electron renderer process
 import './AIAuthoringDialog.css'
@@ -15,6 +16,7 @@ interface AIAuthoringDialogProps {
   isOpen: boolean
   onClose: () => void
   onKataGenerated: (kata: GeneratedKata) => void
+  sourceKata?: Kata | null // For variation generation
 }
 
 interface FormData {
@@ -76,7 +78,10 @@ const QUESTION_TYPES = [
   { value: 'explanation', label: 'Explanation' }
 ]
 
-export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGenerated }: AIAuthoringDialogProps) {
+export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGenerated, sourceKata }: AIAuthoringDialogProps) {
+  // Determine if this is variation generation mode
+  const isVariationMode = Boolean(sourceKata)
+  
   const [formData, setFormData] = useState<FormData>({
     description: '',
     language: 'py',
@@ -342,7 +347,7 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
     <div className="ai-authoring-overlay">
       <div className="ai-authoring-dialog">
         <div className="dialog-header">
-          <h2>Generate Kata with AI</h2>
+          <h2>{isVariationMode ? `Generate Variation of "${sourceKata?.title}"` : 'Generate Kata with AI'}</h2>
           <button 
             className="close-button" 
             onClick={handleCancel}

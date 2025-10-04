@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Kata, KataFilters, Language, KataType, Difficulty } from '@/types'
 import { ImportExportPanel } from './ImportExportPanel'
+import { AIAuthoringDialog } from './AIAuthoringDialog'
+import { VariationGenerator } from './VariationGenerator'
 import './KataSelector.css'
 
 interface KataSelectorProps {
@@ -32,8 +34,11 @@ export function KataSelector({
 }: KataSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [internalFilters, setInternalFilters] = useState<KataFilters>({})
-  const [activeTab, setActiveTab] = useState<'katas' | 'import-export'>('katas')
+  const [activeTab, setActiveTab] = useState<'katas' | 'import-export' | 'generate'>('katas')
   const [filtersCollapsed, setFiltersCollapsed] = useState(false)
+  const [showAIDialog, setShowAIDialog] = useState(false)
+  const [showVariationGenerator, setShowVariationGenerator] = useState(false)
+  const [variationSourceKata, setVariationSourceKata] = useState<Kata | null>(null)
   
   // Use external filters if provided, otherwise use internal filters
   const filters = externalFilters || internalFilters
@@ -147,6 +152,41 @@ export function KataSelector({
     console.log('Export completed')
   }
 
+  const handleGenerateKata = () => {
+    setShowAIDialog(true)
+  }
+
+  const handleGenerateVariation = (kata: Kata) => {
+    setVariationSourceKata(kata)
+    setShowVariationGenerator(true)
+  }
+
+  const handleAIDialogClose = () => {
+    setShowAIDialog(false)
+  }
+
+  const handleVariationGeneratorClose = () => {
+    setShowVariationGenerator(false)
+    setVariationSourceKata(null)
+  }
+
+  const handleKataGenerated = () => {
+    // Refresh the kata list after generation
+    if (onKatasRefresh) {
+      onKatasRefresh()
+    }
+    setShowAIDialog(false)
+  }
+
+  const handleVariationGenerated = () => {
+    // Refresh the kata list after variation generation
+    if (onKatasRefresh) {
+      onKatasRefresh()
+    }
+    setShowVariationGenerator(false)
+    setVariationSourceKata(null)
+  }
+
   if (isLoading) {
     return (
       <div className="kata-selector">
@@ -209,6 +249,13 @@ export function KataSelector({
           onClick={() => setActiveTab('import-export')}
         >
           Import/Export
+        </button>
+        <button 
+          className="tab-button generate-kata-btn"
+          onClick={handleGenerateKata}
+          title="Generate new kata using AI"
+        >
+          ✨ Generate
         </button>
       </div>
 
@@ -372,6 +419,16 @@ export function KataSelector({
                           <span className="language">{kata.language.toUpperCase()}</span>
                           <span className={`type ${kata.type}`}>{kata.type}</span>
                         </div>
+                        <button
+                          className="kata-menu-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleGenerateVariation(kata)
+                          }}
+                          title="Generate variation of this kata"
+                        >
+                          ⚡
+                        </button>
                       </div>
                       
                       {kata.tags.length > 0 && (
@@ -395,6 +452,23 @@ export function KataSelector({
           />
         )}
       </div>
+
+      {showAIDialog && (
+        <AIAuthoringDialog
+          isOpen={showAIDialog}
+          onClose={handleAIDialogClose}
+          onKataGenerated={handleKataGenerated}
+        />
+      )}
+
+      {showVariationGenerator && variationSourceKata && (
+        <VariationGenerator
+          sourceKata={variationSourceKata}
+          isOpen={showVariationGenerator}
+          onClose={handleVariationGeneratorClose}
+          onVariationGenerated={handleVariationGenerated}
+        />
+      )}
     </div>
   )
 }

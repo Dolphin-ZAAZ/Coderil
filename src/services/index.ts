@@ -4,6 +4,7 @@ export { PromptEngineService } from './prompt-engine';
 export { ResponseParserService } from './response-parser';
 export { ScoringService } from './scoring';
 export { AutoContinueService } from './auto-continue';
+export { SeriesManagerService } from './series-manager';
 
 // Services that use Node.js modules are only available in main process via IPC
 // These are commented out to prevent bundling in renderer process:

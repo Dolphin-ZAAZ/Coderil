@@ -100,22 +100,46 @@ export class PromptEngineService {
     const template = this.getVariationTemplate()
     const systemPrompt = template.system
     
+    // Determine target difficulty
+    const targetDifficulty = this.calculateTargetDifficulty(sourceKata.difficulty, options.difficultyAdjustment)
+    
+    // Build series context
+    const seriesContext = options.seriesName ? 
+      `This variation is part of the "${options.seriesName}" series.` : 
+      `This is a variation of the "${sourceKata.title}" kata.`
+    
     const userPrompt = `
 Generate a variation of the following kata:
 
-**Original Kata:**
-Title: ${sourceKata.title}
-Description: ${sourceKata.statement}
-Language: ${sourceKata.language}
-Difficulty: ${sourceKata.difficulty}
+**Original Kata Information:**
+- Title: ${sourceKata.title}
+- Language: ${sourceKata.language}
+- Type: ${sourceKata.type}
+- Current Difficulty: ${sourceKata.difficulty}
+- Tags: ${sourceKata.tags?.join(', ') || 'None'}
+
+**Original Problem Statement:**
+${sourceKata.statement || 'No statement available'}
 
 **Variation Requirements:**
-- Difficulty adjustment: ${options.difficultyAdjustment}
-${options.focusArea ? `- Focus area: ${options.focusArea}` : ''}
-${options.parameterChanges ? `- Parameter changes: ${options.parameterChanges}` : ''}
-${options.seriesName ? `- Series name: ${options.seriesName}` : ''}
+- Target Difficulty: ${targetDifficulty} (${options.difficultyAdjustment} than original)
+- Series Context: ${seriesContext}
+${options.focusArea ? `- Focus Area: ${options.focusArea}` : ''}
+${options.parameterChanges ? `- Parameter Changes: ${options.parameterChanges}` : ''}
 
-Please generate a complete variation following the same format as the original.
+**Difficulty Adjustment Guidelines:**
+${this.getDifficultyAdjustmentGuidelines(options.difficultyAdjustment)}
+
+**Requirements:**
+1. Maintain the same kata type (${sourceKata.type}) and language (${sourceKata.language})
+2. Keep the core learning objectives while adjusting complexity
+3. Generate a complete kata with all necessary files
+4. Ensure the variation provides educational value
+5. Follow the same structured format as the original
+6. Create a new, unique title that reflects the variation
+7. Update tags appropriately for the new difficulty and focus
+
+Please generate the complete variation following the exact format requirements for ${sourceKata.type} katas.
     `.trim()
     
     return `${systemPrompt}\n\n${userPrompt}`
@@ -496,22 +520,47 @@ Please generate all required files following the exact format specified above.`,
 
   private getVariationTemplate(): PromptTemplate {
     return {
-      system: `You are an expert coding instructor creating variations of existing programming challenges. Generate a complete variation that maintains the core learning objectives while providing fresh challenges.
+      system: `You are an expert coding instructor and curriculum designer specializing in creating educational variations of programming challenges. Your goal is to generate complete, high-quality kata variations that provide fresh learning experiences while maintaining pedagogical value.
 
-**Variation Guidelines:**
-- Maintain the same core concept and learning objectives
-- Adjust complexity based on difficulty requirements
-- Change parameters, constraints, or context while keeping the fundamental problem type
-- Ensure the variation provides educational value
-- Keep the same file structure and format as the original
+**Core Principles:**
+1. **Educational Continuity**: Preserve the fundamental learning objectives and concepts
+2. **Progressive Difficulty**: Adjust complexity appropriately based on target difficulty level
+3. **Contextual Variation**: Change scenarios, domains, or parameters while keeping core algorithms/concepts
+4. **Complete Implementation**: Generate all necessary files with proper structure and content
+5. **Quality Assurance**: Ensure all generated code compiles, tests pass, and solutions are correct
 
-**Output Format:**
-Follow the same structured format as the original kata, including all necessary files (meta.yaml, statement.md, entry file, tests, solution, etc.).
+**Variation Strategies:**
+- **Parameter Scaling**: Adjust input ranges, data sizes, or numerical constraints
+- **Context Shifting**: Change the problem domain (e.g., from math to real-world scenarios)
+- **Constraint Modification**: Add/remove limitations, time/space complexity requirements
+- **Edge Case Expansion**: Include more boundary conditions and special cases
+- **Algorithm Variation**: Suggest different approaches while maintaining core concepts
+- **Input/Output Evolution**: Modify data formats or interaction patterns
 
-**Difficulty Adjustments:**
-- "easier": Simplify constraints, reduce edge cases, provide more guidance
-- "harder": Add complexity, more edge cases, additional requirements
-- "same": Change context/parameters while maintaining similar complexity`,
+**Quality Standards:**
+- All generated code must be syntactically correct and follow language best practices
+- Test cases must comprehensively validate the solution
+- Solutions must pass all generated tests
+- Problem statements must be clear, unambiguous, and well-structured
+- Metadata must be accurate and properly formatted
+- Difficulty progression must be logical and educationally sound
+
+**File Structure Requirements:**
+Generate the complete kata structure following the exact format requirements for the specified kata type:
+- meta.yaml with proper metadata and configuration
+- statement.md with clear problem description and examples
+- Language-specific entry files with appropriate starter code
+- Comprehensive test suites (both public and hidden if applicable)
+- Complete reference solutions
+- Additional files as required by the kata type (rubrics, configurations, etc.)
+
+**Series Progression Logic:**
+When creating variations for a series:
+- Maintain consistent naming conventions
+- Ensure logical difficulty progression
+- Build upon concepts from previous variations
+- Create meaningful connections between related challenges
+- Provide clear learning pathways for students`,
 
       user: `Generate a variation of the provided kata following the guidelines above.`
     }
@@ -713,6 +762,52 @@ Provide your answers to each question below.
 Please generate all required files following the exact format specified above.`,
       
       examples: shortformKataExamples
+    }
+  }
+
+  private calculateTargetDifficulty(currentDifficulty: Difficulty, adjustment: 'easier' | 'harder' | 'same'): Difficulty {
+    if (adjustment === 'same') {
+      return currentDifficulty
+    }
+    
+    const difficultyOrder: Difficulty[] = ['easy', 'medium', 'hard']
+    const currentIndex = difficultyOrder.indexOf(currentDifficulty)
+    
+    if (adjustment === 'easier') {
+      return difficultyOrder[Math.max(0, currentIndex - 1)]
+    } else {
+      return difficultyOrder[Math.min(difficultyOrder.length - 1, currentIndex + 1)]
+    }
+  }
+
+  private getDifficultyAdjustmentGuidelines(adjustment: 'easier' | 'harder' | 'same'): string {
+    switch (adjustment) {
+      case 'easier':
+        return `- Simplify the problem constraints and requirements
+- Reduce the number of edge cases to handle
+- Provide more guidance in the problem statement
+- Use simpler algorithms or data structures
+- Add more examples and hints
+- Reduce the complexity of input/output formats`
+      
+      case 'harder':
+        return `- Add additional constraints and requirements
+- Include more edge cases and corner cases
+- Require more sophisticated algorithms or optimizations
+- Add time/space complexity requirements
+- Introduce multiple solution approaches
+- Make the problem statement more challenging to interpret
+- Add performance requirements or larger input sizes`
+      
+      case 'same':
+        return `- Maintain similar complexity and difficulty level
+- Change the context or domain while keeping core concepts
+- Modify parameters without changing fundamental difficulty
+- Ensure the learning objectives remain equivalent
+- Keep similar cognitive load and problem-solving requirements`
+      
+      default:
+        return 'Maintain appropriate difficulty level for the target audience'
     }
   }
 
