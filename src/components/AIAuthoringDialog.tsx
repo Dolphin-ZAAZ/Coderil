@@ -111,6 +111,11 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState<GenerationProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<{
+    type?: string
+    suggestions?: string[]
+    retryable?: boolean
+  } | null>(null)
   const [aiConfig, setAiConfig] = useState<AIGenerationConfig | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -320,7 +325,24 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
 
     } catch (error) {
       console.error('Generation failed:', error)
-      setError(error instanceof Error ? error.message : 'Generation failed')
+      
+      // Handle different types of errors
+      if (error && typeof error === 'object' && 'errorType' in error) {
+        const aiError = error as any
+        setError(aiError.getUserFriendlyMessage?.() || aiError.message || 'Generation failed')
+        setErrorDetails({
+          type: aiError.errorType,
+          suggestions: aiError.getRecoverySuggestions?.() || [],
+          retryable: aiError.retryable || false
+        })
+      } else {
+        setError(error instanceof Error ? error.message : 'Generation failed')
+        setErrorDetails({
+          type: 'unknown',
+          suggestions: ['Try again in a few moments', 'Check your internet connection'],
+          retryable: true
+        })
+      }
     } finally {
       setIsGenerating(false)
       setProgress(null)
@@ -333,7 +355,20 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
       setIsGenerating(false)
       setProgress(null)
     }
+    setError(null)
+    setErrorDetails(null)
     onClose()
+  }
+
+  const handleRetry = () => {
+    setError(null)
+    setErrorDetails(null)
+    handleSubmit(new Event('submit') as any)
+  }
+
+  const clearError = () => {
+    setError(null)
+    setErrorDetails(null)
   }
 
   if (!isOpen) return null
@@ -730,8 +765,44 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
 
           {/* Error Display */}
           {error && (
-            <div className="error-message">
-              <strong>Error:</strong> {error}
+            <div className="error-section">
+              <div className="error-message">
+                <div className="error-header">
+                  <strong>❌ Error:</strong> {error}
+                  <button 
+                    type="button" 
+                    className="error-close"
+                    onClick={clearError}
+                    aria-label="Clear error"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {errorDetails?.suggestions && errorDetails.suggestions.length > 0 && (
+                  <div className="error-suggestions">
+                    <strong>Suggestions:</strong>
+                    <ul>
+                      {errorDetails.suggestions.map((suggestion, index) => (
+                        <li key={index}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {errorDetails?.retryable && (
+                  <div className="error-actions">
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="retry-button"
+                      disabled={isGenerating}
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
