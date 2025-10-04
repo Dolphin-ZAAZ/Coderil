@@ -76,7 +76,7 @@ const QUESTION_TYPES = [
   { value: 'explanation', label: 'Explanation' }
 ]
 
-export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated }: AIAuthoringDialogProps) {
+export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGenerated }: AIAuthoringDialogProps) {
   const [formData, setFormData] = useState<FormData>({
     description: '',
     language: 'py',
