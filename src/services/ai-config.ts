@@ -31,7 +31,7 @@ export class AIConfigService {
       openaiApiKey: '',
       model: 'gpt-4.1-mini',
       maxTokens: 4000,
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for more consistent output
       retryAttempts: 3,
       timeoutMs: 30000
     }
@@ -44,15 +44,34 @@ export class AIConfigService {
     try {
       const db = await this.ensureDb()
       const configJson = await db.getSetting('aiGenerationConfig')
+      let config = this.getDefaultConfig()
+      
       if (configJson) {
-        const config = JSON.parse(configJson)
+        const savedConfig = JSON.parse(configJson)
         // Merge with defaults to ensure all properties exist
-        return { ...this.getDefaultConfig(), ...config }
+        config = { ...config, ...savedConfig }
       }
-      return this.getDefaultConfig()
+      
+      // Fall back to environment variables if API key is not set
+      if (!config.openaiApiKey || config.openaiApiKey.trim() === '') {
+        const envApiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_TOKEN
+        if (envApiKey) {
+          config.openaiApiKey = envApiKey
+        }
+      }
+      
+      return config
     } catch (error) {
       console.error('Failed to get AI config:', error)
-      return this.getDefaultConfig()
+      const defaultConfig = this.getDefaultConfig()
+      
+      // Still check environment variables even if database fails
+      const envApiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_TOKEN
+      if (envApiKey) {
+        defaultConfig.openaiApiKey = envApiKey
+      }
+      
+      return defaultConfig
     }
   }
 

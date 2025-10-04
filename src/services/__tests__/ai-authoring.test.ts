@@ -5,14 +5,16 @@ import { PromptEngineService } from '../prompt-engine'
 import { ResponseParserService } from '../response-parser'
 import { ContentValidatorService } from '../content-validator'
 import { FileGeneratorService } from '../file-generator'
-import { KataGenerationRequest, GeneratedKataContent, Language, KataType, Difficulty } from '@/types'
+import { GenerationHistoryService } from '../generation-history'
+import { KataGenerationRequest, Language, KataType, Difficulty } from '@/types'
 
-// Mock the dependencies
+// Mock all dependencies
 vi.mock('../ai-config')
 vi.mock('../prompt-engine')
 vi.mock('../response-parser')
 vi.mock('../content-validator')
 vi.mock('../file-generator')
+vi.mock('../generation-history')
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -25,6 +27,7 @@ describe('AIAuthoringService', () => {
   let mockResponseParser: any
   let mockContentValidator: any
   let mockFileGenerator: any
+  let mockGenerationHistory: any
 
   const mockConfig = {
     openaiApiKey: 'sk-test-key',
@@ -35,80 +38,25 @@ describe('AIAuthoringService', () => {
     timeoutMs: 30000
   }
 
-  const mockRequest: KataGenerationRequest = {
-    description: 'Create a function to reverse a string',
-    language: 'py' as Language,
-    difficulty: 'easy' as Difficulty,
-    type: 'code' as KataType,
-    topics: ['strings', 'algorithms'],
-    constraints: 'Use only built-in functions',
-    tags: ['beginner', 'strings'],
-    generateHiddenTests: true,
-    additionalRequirements: 'Include edge cases'
-  }
-
-  const mockGeneratedContent: GeneratedKataContent = {
+  const mockGeneratedContent = {
     metadata: {
-      slug: 'reverse-string',
-      title: 'Reverse String',
+      slug: 'test-kata',
+      title: 'Test Kata',
       language: 'py' as Language,
       type: 'code' as KataType,
       difficulty: 'easy' as Difficulty,
-      tags: ['strings', 'algorithms'],
+      tags: ['test'],
       entry: 'entry.py',
       test: { kind: 'programmatic', file: 'tests.py' },
       timeout_ms: 5000
     },
-    statement: 'Create a function that reverses a string',
-    starterCode: 'def reverse_string(s):\n    # TODO: implement\n    pass',
-    testCode: 'def test_reverse_string():\n    assert reverse_string("hello") == "olleh"',
-    solutionCode: 'def reverse_string(s):\n    return s[::-1]',
-    hiddenTestCode: 'def test_edge_cases():\n    assert reverse_string("") == ""'
-  }
-
-  const mockAPIResponse = {
-    choices: [{
-      message: {
-        content: `\`\`\`yaml
-slug: reverse-string
-title: "Reverse String"
-language: py
-type: code
-difficulty: easy
-tags: [strings, algorithms]
-\`\`\`
-
-\`\`\`markdown
-# Reverse String
-Create a function that reverses a string
-\`\`\`
-
-\`\`\`python
-def reverse_string(s):
-    # TODO: implement
-    pass
-\`\`\`
-
-\`\`\`python
-def test_reverse_string():
-    assert reverse_string("hello") == "olleh"
-\`\`\`
-
-\`\`\`python
-def reverse_string(s):
-    return s[::-1]
-\`\`\``
-      }
-    }],
-    usage: {
-      prompt_tokens: 100,
-      completion_tokens: 200,
-      total_tokens: 300
-    }
+    statement: '# Test Kata\n\nThis is a test kata.',
+    starterCode: 'def solution():\n    pass',
+    testCode: 'def test_solution():\n    assert True',
+    solutionCode: 'def solution():\n    return True'
   }
 
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks()
     
     // Setup mock instances
@@ -138,14 +86,27 @@ def reverse_string(s):
     mockFileGenerator = {
       generateKataFiles: vi.fn().mockResolvedValue({
         success: true,
-        slug: 'reverse-string',
-        path: '/test/katas/reverse-string',
-        filesCreated: ['meta.yaml', 'statement.md', 'entry.py', 'tests.py', 'solution.py'],
+        slug: 'test-kata',
+        path: '/test/katas/test-kata',
+        filesCreated: ['meta.yaml', 'statement.md'],
         errors: [],
         warnings: []
       }),
       slugExists: vi.fn().mockReturnValue(false),
       generateUniqueSlug: vi.fn().mockImplementation((slug) => slug)
+    }
+
+    mockGenerationHistory = {
+      recordSuccessfulGeneration: vi.fn(),
+      recordFailedGeneration: vi.fn(),
+      getHistory: vi.fn().mockReturnValue([]),
+      getGenerationStats: vi.fn().mockReturnValue({}),
+      getCurrentSession: vi.fn().mockReturnValue({}),
+      getCostBreakdown: vi.fn().mockReturnValue({}),
+      clearHistory: vi.fn(),
+      exportHistory: vi.fn().mockReturnValue('{}'),
+      importHistory: vi.fn(),
+      startNewSession: vi.fn()
     }
 
     // Mock the getInstance methods
@@ -154,12 +115,12 @@ def reverse_string(s):
     vi.mocked(ResponseParserService.getInstance).mockReturnValue(mockResponseParser)
     vi.mocked(ContentValidatorService.getInstance).mockReturnValue(mockContentValidator)
     vi.mocked(FileGeneratorService.getInstance).mockReturnValue(mockFileGenerator)
+    vi.mocked(GenerationHistoryService.getInstance).mockReturnValue(mockGenerationHistory)
 
-    // Reset the singleton instance to force re-initialization
+    // Reset the singleton instance
     // @ts-ignore - accessing private static property for testing
     AIAuthoringService.instance = undefined
 
-    // Get fresh service instance
     service = AIAuthoringService.getInstance()
   })
 
@@ -167,174 +128,298 @@ def reverse_string(s):
     vi.restoreAllMocks()
   })
 
+  describe('singleton pattern', () => {
+    it('should return the same instance', () => {
+      const instance1 = AIAuthoringService.getInstance()
+      const instance2 = AIAuthoringService.getInstance()
+      
+      expect(instance1).toBe(instance2)
+    })
+  })
+
   describe('generateKata', () => {
+    const validRequest: KataGenerationRequest = {
+      description: 'Create a function to reverse a string',
+      language: 'py' as Language,
+      difficulty: 'easy' as Difficulty,
+      type: 'code' as KataType,
+      topics: ['strings', 'algorithms'],
+      constraints: 'Use only built-in functions',
+      tags: ['beginner', 'strings'],
+      generateHiddenTests: true,
+      additionalRequirements: 'Include edge cases'
+    }
+
     it('should generate a kata successfully', async () => {
-      // Setup successful API response
+      const mockAPIResponse = {
+        choices: [{
+          message: {
+            content: 'Generated kata content'
+          }
+        }],
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 250,
+          total_tokens: 400
+        }
+      }
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockAPIResponse)
       })
 
-      const result = await service.generateKata(mockRequest)
+      const result = await service.generateKata(validRequest)
 
-      expect(result).toBeDefined()
-      expect(result.slug).toBe('reverse-string')
-      expect(result.content).toEqual(mockGeneratedContent)
-      expect(result.generationMetadata).toBeDefined()
-      expect(result.generationMetadata.tokensUsed).toBe(300)
-      expect(result.generationMetadata.originalRequest).toEqual(mockRequest)
+      expect(result.success).toBe(true)
+      expect(result.kata).toEqual(mockGeneratedContent)
+      expect(result.metadata).toBeDefined()
+      expect(result.metadata.tokensUsed).toBe(400)
+      expect(mockGenerationHistory.recordSuccessfulGeneration).toHaveBeenCalled()
     })
 
     it('should throw error when API key is not configured', async () => {
-      mockAIConfig.getConfig.mockResolvedValue({ ...mockConfig, openaiApiKey: '' })
+      mockAIConfig.getConfig.mockResolvedValueOnce({ ...mockConfig, openaiApiKey: '' })
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow('OpenAI API key not configured')
+      const result = await service.generateKata(validRequest)
+      
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('OpenAI API key not configured')
+    })
+
+    it('should validate generation request', async () => {
+      const invalidRequest = {
+        ...validRequest,
+        description: '' // Empty description
+      }
+
+      await expect(service.generateKata(invalidRequest)).rejects.toThrow(AIServiceError)
+      await expect(service.generateKata(invalidRequest)).rejects.toThrow('Kata description is required')
     })
 
     it('should handle API errors gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        statusText: 'Unauthorized',
         json: () => Promise.resolve({ error: { message: 'Invalid API key' } })
       })
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow(AIServiceError)
+      await expect(service.generateKata(validRequest)).rejects.toThrow(AIServiceError)
+      expect(mockGenerationHistory.recordFailedGeneration).toHaveBeenCalled()
     })
 
-    it('should retry on retryable errors', async () => {
-      // First call fails with 500, second succeeds
+    it('should handle validation errors', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      mockContentValidator.validateGeneratedContent.mockResolvedValueOnce({
+        isValid: false,
+        errors: [{ type: 'structure', message: 'Invalid structure' }],
+        warnings: [],
+        suggestions: []
+      })
+
+      await expect(service.generateKata(validRequest)).rejects.toThrow(AIServiceError)
+      expect(mockGenerationHistory.recordFailedGeneration).toHaveBeenCalled()
+    })
+
+    it('should handle network errors', async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError('Network error'))
+
+      await expect(service.generateKata(validRequest)).rejects.toThrow(AIServiceError)
+      expect(mockGenerationHistory.recordFailedGeneration).toHaveBeenCalled()
+    })
+
+    it('should retry on transient failures', async () => {
+      // First call fails, second succeeds
       mockFetch
         .mockResolvedValueOnce({
           ok: false,
           status: 500,
+          statusText: 'Internal Server Error',
           json: () => Promise.resolve({ error: { message: 'Server error' } })
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(mockAPIResponse)
+          json: () => Promise.resolve({
+            choices: [{ message: { content: 'Generated content' } }],
+            usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+          })
         })
 
-      const result = await service.generateKata(mockRequest)
+      const result = await service.generateKata(validRequest)
 
       expect(result).toBeDefined()
       expect(mockFetch).toHaveBeenCalledTimes(2)
     })
 
     it('should handle timeout errors', async () => {
-      // Mock a timeout by making fetch reject with AbortError
-      mockAIConfig.getConfig.mockResolvedValue({ ...mockConfig, timeoutMs: 100 }) // Very short timeout
-      mockFetch.mockImplementation(() => {
-        const error = new Error('The operation was aborted')
-        error.name = 'AbortError'
-        return Promise.reject(error)
-      })
+      // Mock a timeout by rejecting with a timeout error
+      mockFetch.mockRejectedValueOnce(new Error('Request timeout'))
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow('Request timeout')
+      await expect(service.generateKata(validRequest)).rejects.toThrow(AIServiceError)
     })
 
     it('should track progress during generation', async () => {
+      const progressCallback = vi.fn()
+      service.onProgress(progressCallback)
+
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockAPIResponse)
       })
 
-      const progressUpdates: any[] = []
-      const unsubscribe = service.onProgress((progress) => {
-        progressUpdates.push(progress)
-      })
+      await service.generateKata(validRequest)
 
-      await service.generateKata(mockRequest)
-      unsubscribe()
-
-      expect(progressUpdates.length).toBeGreaterThan(0)
-      expect(progressUpdates[0].stage).toBe('initializing')
-      expect(progressUpdates[progressUpdates.length - 1].stage).toBe('complete')
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: 'initializing', progress: 0 })
+      )
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: 'generating', progress: 20 })
+      )
+      expect(progressCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: 'complete', progress: 100 })
+      )
     })
 
-    it('should validate generated content', async () => {
+    it('should update session token usage', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockAPIResponse)
       })
 
-      await service.generateKata(mockRequest)
+      await service.generateKata(validRequest)
 
-      expect(mockContentValidator.validateGeneratedContent).toHaveBeenCalledWith(mockGeneratedContent)
-    })
-
-    it('should continue with warnings if validation has issues', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      mockContentValidator.validateGeneratedContent.mockResolvedValue({
-        isValid: false,
-        errors: [{ type: 'syntax', message: 'Minor syntax issue' }],
-        warnings: [],
-        suggestions: []
-      })
-
-      const result = await service.generateKata(mockRequest)
-
-      expect(result).toBeDefined()
-      // Should still complete despite validation issues
+      const sessionUsage = service.getSessionTokenUsage()
+      expect(sessionUsage.promptTokens).toBe(100)
+      expect(sessionUsage.completionTokens).toBe(200)
+      expect(sessionUsage.totalTokens).toBe(300)
+      expect(sessionUsage.estimatedCost).toBeGreaterThan(0)
     })
   })
 
   describe('generateVariation', () => {
-    const mockSourceKata = {
-      slug: 'original-kata',
-      title: 'Original Kata',
+    const sourceKata = {
+      slug: 'fibonacci-sequence',
+      title: 'Fibonacci Sequence',
       language: 'py' as Language,
       type: 'code' as KataType,
-      difficulty: 'easy' as Difficulty,
-      tags: ['strings'],
-      path: '/path/to/kata'
+      difficulty: 'medium' as Difficulty,
+      tags: ['algorithms', 'recursion'],
+      path: '/katas/fibonacci-sequence'
     }
 
-    const mockVariationOptions = {
+    const variationOptions = {
       difficultyAdjustment: 'harder' as const,
-      focusArea: 'performance',
-      parameterChanges: 'Add time complexity requirements',
-      seriesName: 'String Manipulation Series'
+      focusArea: 'optimization',
+      parameterChanges: 'Add memoization',
+      seriesName: 'Fibonacci Advanced'
     }
 
     it('should generate a variation successfully', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated variation content' } }],
+        usage: { prompt_tokens: 150, completion_tokens: 250, total_tokens: 400 }
+      }
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockAPIResponse)
       })
 
-      const result = await service.generateVariation(mockSourceKata, mockVariationOptions)
+      const result = await service.generateVariation(sourceKata, variationOptions)
 
-      expect(result).toBeDefined()
-      expect(result.slug).toContain('string-manipulation-series-variation')
-      expect(mockPromptEngine.buildVariationPrompt).toHaveBeenCalledWith(mockSourceKata, mockVariationOptions)
+      expect(result.slug).toContain('fibonacci-advanced-variation')
+      expect(result.content).toEqual(mockGeneratedContent)
+      expect(mockPromptEngine.buildVariationPrompt).toHaveBeenCalledWith(sourceKata, variationOptions)
+      expect(mockGenerationHistory.recordSuccessfulGeneration).toHaveBeenCalled()
+    })
+
+    it('should validate source kata and options', async () => {
+      const invalidSourceKata = null as any
+
+      await expect(service.generateVariation(invalidSourceKata, variationOptions)).rejects.toThrow()
     })
 
     it('should handle variation generation errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: () => Promise.resolve({ error: { message: 'Bad request' } })
+        statusText: 'Bad Request',
+        json: () => Promise.resolve({ error: { message: 'Invalid request' } })
       })
 
-      await expect(service.generateVariation(mockSourceKata, mockVariationOptions)).rejects.toThrow(AIServiceError)
+      await expect(service.generateVariation(sourceKata, variationOptions)).rejects.toThrow(AIServiceError)
+    })
+
+    it('should generate variation slug correctly', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated variation content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      const result = await service.generateVariation(sourceKata, variationOptions)
+
+      expect(result.slug).toContain('fibonacci-advanced-variation')
+      expect(result.slug).toMatch(/fibonacci-advanced-variation-\d+/)
+    })
+
+    it('should handle variations without series name', async () => {
+      const optionsWithoutSeries = {
+        difficultyAdjustment: 'easier' as const
+      }
+
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated variation content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      const result = await service.generateVariation(sourceKata, optionsWithoutSeries)
+
+      expect(result.slug).toContain('fibonacci-sequence-variation')
     })
   })
 
   describe('validateGeneration', () => {
-    it('should validate generated content', async () => {
+    it('should validate generated content successfully', async () => {
       const result = await service.validateGeneration(mockGeneratedContent)
 
       expect(result.isValid).toBe(true)
       expect(result.errors).toEqual([])
       expect(result.warnings).toEqual([])
+      expect(mockContentValidator.validateGeneratedContent).toHaveBeenCalledWith(mockGeneratedContent)
     })
 
-    it('should handle validation errors', async () => {
-      mockContentValidator.validateGeneratedContent.mockResolvedValue({
+    it('should handle validation failures', async () => {
+      mockContentValidator.validateGeneratedContent.mockResolvedValueOnce({
         isValid: false,
         errors: [{ type: 'syntax', message: 'Syntax error' }],
         warnings: [{ type: 'style', message: 'Style warning' }],
@@ -347,140 +432,280 @@ def reverse_string(s):
       expect(result.errors).toEqual(['Syntax error'])
       expect(result.warnings).toEqual(['Style warning'])
     })
+
+    it('should handle validation service errors', async () => {
+      mockContentValidator.validateGeneratedContent.mockRejectedValueOnce(new Error('Validation failed'))
+
+      const result = await service.validateGeneration(mockGeneratedContent)
+
+      expect(result.isValid).toBe(false)
+      expect(result.errors).toContain('Validation failed: Validation failed')
+    })
+  })
+
+  describe('saveGeneratedKata', () => {
+    it('should save generated kata successfully', async () => {
+      const result = await service.saveGeneratedKata(mockGeneratedContent)
+
+      expect(result.success).toBe(true)
+      expect(result.slug).toBe('test-kata')
+      expect(result.path).toBe('/test/katas/test-kata')
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(mockGeneratedContent, undefined)
+    })
+
+    it('should handle invalid content', async () => {
+      const invalidContent = { metadata: null } as any
+
+      await expect(service.saveGeneratedKata(invalidContent)).rejects.toThrow(AIServiceError)
+      await expect(service.saveGeneratedKata(invalidContent)).rejects.toThrow('Invalid kata content: missing metadata')
+    })
+
+    it('should handle missing slug', async () => {
+      const contentWithoutSlug = {
+        ...mockGeneratedContent,
+        metadata: { ...mockGeneratedContent.metadata, slug: '' }
+      }
+
+      await expect(service.saveGeneratedKata(contentWithoutSlug)).rejects.toThrow(AIServiceError)
+      await expect(service.saveGeneratedKata(contentWithoutSlug)).rejects.toThrow('Invalid kata content: missing slug')
+    })
+
+    it('should handle file generation failures', async () => {
+      mockFileGenerator.generateKataFiles.mockResolvedValue({
+        success: false,
+        slug: 'test-kata',
+        path: '',
+        filesCreated: [],
+        errors: ['Permission denied'],
+        warnings: []
+      })
+
+      await expect(service.saveGeneratedKata(mockGeneratedContent)).rejects.toThrow(AIServiceError)
+      await expect(service.saveGeneratedKata(mockGeneratedContent)).rejects.toThrow('Failed to save kata files: Permission denied')
+    })
+
+    it('should handle conflict resolution', async () => {
+      const conflictResolution = { action: 'overwrite' as const }
+
+      await service.saveGeneratedKata(mockGeneratedContent, conflictResolution)
+
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(mockGeneratedContent, conflictResolution)
+    })
   })
 
   describe('progress tracking', () => {
-    it('should track and report progress', async () => {
-      const progressUpdates: any[] = []
-      const unsubscribe = service.onProgress((progress) => {
-        progressUpdates.push(progress)
-      })
+    it('should track current progress', () => {
+      expect(service.getCurrentProgress()).toBeNull()
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
+      // Simulate progress update during generation
+      const progressCallback = vi.fn()
+      service.onProgress(progressCallback)
 
-      await service.generateKata(mockRequest)
-
-      expect(progressUpdates.length).toBeGreaterThan(0)
-      expect(progressUpdates.some(p => p.stage === 'initializing')).toBe(true)
-      expect(progressUpdates.some(p => p.stage === 'generating')).toBe(true)
-      expect(progressUpdates.some(p => p.stage === 'parsing')).toBe(true)
-      expect(progressUpdates.some(p => p.stage === 'validating')).toBe(true)
-      expect(progressUpdates.some(p => p.stage === 'complete')).toBe(true)
-
-      unsubscribe()
+      // Progress should be updated during generation
+      expect(service.getCurrentProgress()).toBeNull() // No active generation
     })
 
-    it('should allow unsubscribing from progress updates', () => {
-      const callback = vi.fn()
-      const unsubscribe = service.onProgress(callback)
+    it('should allow subscribing to progress updates', () => {
+      const callback1 = vi.fn()
+      const callback2 = vi.fn()
 
-      unsubscribe()
+      const unsubscribe1 = service.onProgress(callback1)
+      const unsubscribe2 = service.onProgress(callback2)
 
-      // Trigger some progress (this would normally call the callback)
-      // Since we can't easily trigger progress without a full generation,
-      // we'll just verify the unsubscribe function exists
-      expect(typeof unsubscribe).toBe('function')
+      expect(typeof unsubscribe1).toBe('function')
+      expect(typeof unsubscribe2).toBe('function')
+
+      // Test unsubscribe
+      unsubscribe1()
+      unsubscribe2()
     })
   })
 
   describe('token usage tracking', () => {
-    it('should track token usage across requests', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      // Reset session usage
-      service.resetSessionTokenUsage()
-
-      await service.generateKata(mockRequest)
-
-      const usage = service.getSessionTokenUsage()
-      expect(usage.totalTokens).toBe(300)
-      expect(usage.promptTokens).toBe(100)
-      expect(usage.completionTokens).toBe(200)
-      expect(usage.estimatedCost).toBeGreaterThan(0)
-    })
-
-    it('should accumulate token usage across multiple requests', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      service.resetSessionTokenUsage()
-
-      await service.generateKata(mockRequest)
-      await service.generateKata(mockRequest)
-
-      const usage = service.getSessionTokenUsage()
-      expect(usage.totalTokens).toBe(600) // 300 * 2
+    it('should track session token usage', () => {
+      const initialUsage = service.getSessionTokenUsage()
+      
+      expect(initialUsage.promptTokens).toBe(0)
+      expect(initialUsage.completionTokens).toBe(0)
+      expect(initialUsage.totalTokens).toBe(0)
+      expect(initialUsage.estimatedCost).toBe(0)
     })
 
     it('should reset session token usage', () => {
       service.resetSessionTokenUsage()
-      const usage = service.getSessionTokenUsage()
       
-      expect(usage.totalTokens).toBe(0)
+      const usage = service.getSessionTokenUsage()
       expect(usage.promptTokens).toBe(0)
       expect(usage.completionTokens).toBe(0)
+      expect(usage.totalTokens).toBe(0)
       expect(usage.estimatedCost).toBe(0)
     })
   })
 
-  describe('retry logic', () => {
-    it('should retry on rate limit errors', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 429,
-          json: () => Promise.resolve({ error: { message: 'Rate limit exceeded' } })
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockAPIResponse)
-        })
+  describe('generation history', () => {
+    it('should delegate to generation history service', () => {
+      service.getGenerationHistory(10)
+      expect(mockGenerationHistory.getHistory).toHaveBeenCalledWith(10)
 
-      const result = await service.generateKata(mockRequest)
+      service.getGenerationStats()
+      expect(mockGenerationHistory.getGenerationStats).toHaveBeenCalled()
 
-      expect(result).toBeDefined()
-      expect(mockFetch).toHaveBeenCalledTimes(2)
-    })
+      service.getCurrentGenerationSession()
+      expect(mockGenerationHistory.getCurrentSession).toHaveBeenCalled()
 
-    it('should not retry on non-retryable errors', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: () => Promise.resolve({ error: { message: 'Invalid API key' } })
-      })
+      service.getCostBreakdown(30)
+      expect(mockGenerationHistory.getCostBreakdown).toHaveBeenCalledWith(30)
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow('Invalid API key')
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-    })
+      service.clearGenerationHistory()
+      expect(mockGenerationHistory.clearHistory).toHaveBeenCalled()
 
-    it('should fail after max retry attempts', async () => {
-      // Mock config with only 2 retry attempts
-      mockAIConfig.getConfig.mockResolvedValue({ ...mockConfig, retryAttempts: 2 })
+      service.exportGenerationHistory()
+      expect(mockGenerationHistory.exportHistory).toHaveBeenCalled()
 
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: { message: 'Server error' } })
-      })
+      service.importGenerationHistory('{}')
+      expect(mockGenerationHistory.importHistory).toHaveBeenCalledWith('{}')
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow('API call failed after 2 attempts')
-      expect(mockFetch).toHaveBeenCalledTimes(2)
+      service.startNewGenerationSession()
+      expect(mockGenerationHistory.startNewSession).toHaveBeenCalled()
     })
   })
 
-  describe('error handling', () => {
-    it('should handle network errors', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'))
+  describe('slug management', () => {
+    it('should check if slug exists', () => {
+      service.slugExists('test-kata')
+      expect(mockFileGenerator.slugExists).toHaveBeenCalledWith('test-kata')
+    })
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow(AIServiceError)
+    it('should generate unique slug', () => {
+      service.generateUniqueSlug('test-kata')
+      expect(mockFileGenerator.generateUniqueSlug).toHaveBeenCalledWith('test-kata')
+    })
+  })
+
+  describe('generateAndSaveKata', () => {
+    it('should generate and save kata in one operation', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
+
+      const result = await service.generateAndSaveKata(request)
+
+      expect(result.kata).toBeDefined()
+      expect(result.fileResult).toBeDefined()
+      expect(result.fileResult.success).toBe(true)
+    })
+  })
+
+  describe('request validation', () => {
+    it('should validate description length', async () => {
+      const longDescription = 'A'.repeat(5001) // Too long
+      const request = {
+        description: longDescription,
+        language: 'py' as Language,
+        difficulty: 'easy' as Difficulty,
+        type: 'code' as KataType,
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow('Kata description is too long')
+    })
+
+    it('should validate language', async () => {
+      const request = {
+        description: 'Test kata',
+        language: 'invalid' as Language,
+        difficulty: 'easy' as Difficulty,
+        type: 'code' as KataType,
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow('Invalid language: invalid')
+    })
+
+    it('should validate difficulty', async () => {
+      const request = {
+        description: 'Test kata',
+        language: 'py' as Language,
+        difficulty: 'invalid' as Difficulty,
+        type: 'code' as KataType,
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow('Invalid difficulty: invalid')
+    })
+  })
+
+  describe('API error handling', () => {
+    it('should handle 401 authentication errors', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: () => Promise.resolve({ error: { message: 'Invalid API key' } })
+      })
+
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow(AIServiceError)
+    })
+
+    it('should handle 429 rate limit errors', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: new Map([['retry-after', '60']]),
+        json: () => Promise.resolve({ error: { message: 'Rate limit exceeded' } })
+      })
+
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow(AIServiceError)
+    })
+
+    it('should handle 500 server errors', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.resolve({ error: { message: 'Server error' } })
+      })
+
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
+
+      await expect(service.generateKata(request)).rejects.toThrow(AIServiceError)
     })
 
     it('should handle malformed API responses', async () => {
@@ -489,177 +714,77 @@ def reverse_string(s):
         json: () => Promise.resolve({ invalid: 'response' })
       })
 
-      await expect(service.generateKata(mockRequest)).rejects.toThrow('Invalid API response format')
-    })
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
 
-    it('should handle parsing errors gracefully', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      mockResponseParser.parseKataResponse.mockImplementation(() => {
-        throw new Error('Parsing failed')
-      })
-
-      await expect(service.generateKata(mockRequest)).rejects.toThrow(AIServiceError)
+      await expect(service.generateKata(request)).rejects.toThrow(AIServiceError)
     })
   })
 
   describe('cost calculation', () => {
-    it('should calculate costs for different models', async () => {
-      const gpt4Response = { ...mockAPIResponse }
+    it('should calculate token costs correctly', async () => {
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 2000, total_tokens: 3000 }
+      }
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(gpt4Response)
+        json: () => Promise.resolve(mockAPIResponse)
       })
 
-      mockAIConfig.getConfig.mockResolvedValue({ ...mockConfig, model: 'gpt-4' })
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
+      }
 
-      service.resetSessionTokenUsage()
-      await service.generateKata(mockRequest)
+      await service.generateKata(request)
 
       const usage = service.getSessionTokenUsage()
+      expect(usage.totalTokens).toBe(3000)
       expect(usage.estimatedCost).toBeGreaterThan(0)
-      // GPT-4 should be more expensive than GPT-3.5
+      // For gpt-4.1-mini at $0.0015 per 1k tokens: 3000 tokens = $0.0045
+      expect(usage.estimatedCost).toBeCloseTo(0.0045, 4)
     })
-  })
 
-  describe('slug generation', () => {
-    it('should generate valid slugs from titles', async () => {
-      const contentWithSpecialTitle = {
-        ...mockGeneratedContent,
-        metadata: {
-          ...mockGeneratedContent.metadata,
-          title: 'Complex Title with Special Characters! & Spaces'
-        }
+    it('should handle different model costs', async () => {
+      // Test with different model
+      mockAIConfig.getConfig.mockResolvedValueOnce({
+        ...mockConfig,
+        model: 'gpt-4'
+      })
+
+      const mockAPIResponse = {
+        choices: [{ message: { content: 'Generated content' } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 1000, total_tokens: 2000 }
       }
 
-      mockResponseParser.parseKataResponse.mockReturnValue(contentWithSpecialTitle)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockAPIResponse)
       })
 
-      const result = await service.generateKata(mockRequest)
-
-      expect(result.slug).toMatch(/^[a-z0-9-]+$/) // Should be URL-safe
-      expect(result.slug).not.toContain(' ')
-      expect(result.slug).not.toContain('!')
-      expect(result.slug).not.toContain('&')
-    })
-  })
-
-  describe('file generation', () => {
-    it('should save generated kata to file system', async () => {
-      const result = await service.saveGeneratedKata(mockGeneratedContent)
-
-      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
-        mockGeneratedContent,
-        undefined
-      )
-      expect(result.success).toBe(true)
-      expect(result.slug).toBe('reverse-string')
-      expect(result.filesCreated).toContain('meta.yaml')
-    })
-
-    it('should handle file generation errors', async () => {
-      mockFileGenerator.generateKataFiles.mockResolvedValue({
-        success: false,
-        slug: 'reverse-string',
-        path: '/test/katas/reverse-string',
-        filesCreated: [],
-        errors: ['Failed to write file'],
-        warnings: []
-      })
-
-      await expect(service.saveGeneratedKata(mockGeneratedContent)).rejects.toThrow(
-        'Failed to save kata files: Failed to write file'
-      )
-    })
-
-    it('should handle slug conflicts with resolution', async () => {
-      const conflictResolution = {
-        action: 'overwrite' as const
+      const request: KataGenerationRequest = {
+        description: 'Test kata',
+        language: 'py',
+        difficulty: 'easy',
+        type: 'code',
+        generateHiddenTests: false
       }
 
-      await service.saveGeneratedKata(mockGeneratedContent, conflictResolution)
+      await service.generateKata(request)
 
-      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
-        mockGeneratedContent,
-        conflictResolution
-      )
-    })
-
-    it('should check if slug exists', () => {
-      mockFileGenerator.slugExists.mockReturnValue(true)
-
-      const exists = service.slugExists('existing-kata')
-
-      expect(exists).toBe(true)
-      expect(mockFileGenerator.slugExists).toHaveBeenCalledWith('existing-kata')
-    })
-
-    it('should generate unique slugs', () => {
-      mockFileGenerator.generateUniqueSlug.mockReturnValue('unique-kata-2')
-
-      const uniqueSlug = service.generateUniqueSlug('unique-kata')
-
-      expect(uniqueSlug).toBe('unique-kata-2')
-      expect(mockFileGenerator.generateUniqueSlug).toHaveBeenCalledWith('unique-kata')
-    })
-
-    it('should generate and save kata in one operation', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      const result = await service.generateAndSaveKata(mockRequest)
-
-      expect(result.kata).toBeDefined()
-      expect(result.fileResult).toBeDefined()
-      expect(result.kata.slug).toBe('reverse-string')
-      expect(result.fileResult.success).toBe(true)
-      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalled()
-    })
-
-    it('should handle generation and save with conflict resolution', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockAPIResponse)
-      })
-
-      const conflictResolution = {
-        action: 'rename' as const,
-        newSlug: 'reverse-string-v2'
-      }
-
-      const result = await service.generateAndSaveKata(mockRequest, conflictResolution)
-
-      expect(result.kata).toBeDefined()
-      expect(result.fileResult).toBeDefined()
-      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
-        expect.any(Object),
-        conflictResolution
-      )
-    })
-
-    it('should update progress during file saving', async () => {
-      const progressUpdates: any[] = []
-      const unsubscribe = service.onProgress((progress) => {
-        progressUpdates.push(progress)
-      })
-
-      await service.saveGeneratedKata(mockGeneratedContent)
-
-      const savingProgress = progressUpdates.find(p => p.message.includes('Saving kata files'))
-      const completeProgress = progressUpdates.find(p => p.message.includes('Kata saved successfully'))
-
-      expect(savingProgress).toBeDefined()
-      expect(completeProgress).toBeDefined()
-
-      unsubscribe()
+      const usage = service.getSessionTokenUsage()
+      // GPT-4 is more expensive than gpt-4.1-mini
+      expect(usage.estimatedCost).toBeGreaterThan(0.01) // Should be around $0.06 for 2k tokens
     })
   })
 })

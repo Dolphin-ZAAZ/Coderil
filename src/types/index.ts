@@ -264,6 +264,13 @@ export interface GeneratedKata {
   generationMetadata: GenerationMetadata
 }
 
+export interface KataGenerationResult {
+  success: boolean
+  kata?: GeneratedKataContent
+  metadata?: GenerationMetadata
+  error?: string
+}
+
 export interface AutoContinueNotification {
   message: string
   fromKata: string

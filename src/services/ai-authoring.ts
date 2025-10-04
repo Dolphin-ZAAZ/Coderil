@@ -4,7 +4,8 @@ import {
   GeneratedKata,
   GenerationMetadata,
   AIGenerationConfig,
-  Kata
+  Kata,
+  KataGenerationResult
 } from '@/types'
 import { AIConfigService } from './ai-config'
 import { PromptEngineService } from './prompt-engine'
@@ -86,7 +87,7 @@ export class AIAuthoringService {
   /**
    * Generate a complete kata from a natural language description
    */
-  async generateKata(request: KataGenerationRequest): Promise<GeneratedKata> {
+  async generateKata(request: KataGenerationRequest): Promise<KataGenerationResult> {
     const startTime = Date.now()
     
     try {
@@ -99,11 +100,10 @@ export class AIAuthoringService {
       // Validate configuration
       const config = await this.aiConfigService.getConfig()
       if (!config.openaiApiKey) {
-        throw new AIServiceError('OpenAI API key not configured', {
-          retryable: false,
-          errorType: 'auth',
-          context: { operation: 'generateKata', stage: 'config_validation' }
-        })
+        return {
+          success: false,
+          error: 'OpenAI API key not configured. Please set your API key in settings or environment variables.'
+        }
       }
 
       // Validate request
@@ -116,8 +116,7 @@ export class AIAuthoringService {
         progress: 20
       })
 
-      const prompt = this.promptEngineService.buildKataPrompt(request)
-      const response = await this.callOpenAIWithRetry(prompt, config)
+      const response = await this.generateWithRetry(request, config)
 
       // Parse response
       this.updateProgress({
@@ -126,7 +125,7 @@ export class AIAuthoringService {
         progress: 60
       })
 
-      const content = this.responseParserService.parseKataResponse(response.content, request.type)
+      let content = this.responseParserService.parseKataResponse(response.content, request.type)
 
       // Validate content
       this.updateProgress({
@@ -140,19 +139,31 @@ export class AIAuthoringService {
         const errorMessage = `Generated content validation failed: ${validationResult.errors.map(e => e.message).join(', ')}`
         console.warn(errorMessage, validationResult.errors)
         
-        // For critical validation errors, throw an error
-        const criticalErrors = validationResult.errors.filter(e => e.type === 'structure' || e.type === 'metadata')
+        // Check if we should retry with improved prompt
+        const criticalErrors = validationResult.errors.filter(e => 
+          e.type === 'structure' || e.type === 'metadata' || e.type === 'syntax'
+        )
+        
         if (criticalErrors.length > 0) {
-          throw new AIServiceError(errorMessage, {
-            retryable: true,
-            errorType: 'validation',
-            context: { 
-              operation: 'generateKata', 
-              stage: 'content_validation',
-              validationErrors: validationResult.errors,
-              request
-            }
-          })
+          // Try to fix common issues automatically
+          const fixedContent = this.attemptContentFix(content, validationResult.errors)
+          if (fixedContent) {
+            console.log('Applied automatic content fixes')
+            content = fixedContent
+          } else {
+            // If we can't fix it, throw error for retry with better prompt
+            throw new AIServiceError(errorMessage, {
+              retryable: true,
+              errorType: 'validation',
+              context: { 
+                operation: 'generateKata', 
+                stage: 'content_validation',
+                validationErrors: validationResult.errors,
+                request,
+                suggestedFixes: this.generateFixSuggestions(validationResult.errors)
+              }
+            })
+          }
         }
       }
 
@@ -194,7 +205,11 @@ export class AIAuthoringService {
         config.model
       )
 
-      return generatedKata
+      return {
+        success: true,
+        kata: content,
+        metadata: generationMetadata
+      }
 
     } catch (error) {
       const errorMessage = error instanceof AIServiceError ? 
@@ -234,7 +249,11 @@ export class AIAuthoringService {
       )
       
       aiAuthoringErrorHandler.handleGenerationError(wrappedError, request)
-      throw wrappedError
+      
+      return {
+        success: false,
+        error: wrappedError.getUserFriendlyMessage()
+      }
     }
   }
 
@@ -620,10 +639,26 @@ export class AIAuthoringService {
     request: KataGenerationRequest,
     conflictResolution?: SlugConflictResolution
   ): Promise<{ kata: GeneratedKata; fileResult: FileGenerationResult }> {
-    const kata = await this.generateKata(request)
-    const fileResult = await this.saveGeneratedKata(kata.content, conflictResolution)
+    const result = await this.generateKata(request)
     
-    return { kata, fileResult }
+    if (!result.success || !result.kata) {
+      throw new AIServiceError(result.error || 'Failed to generate kata', {
+        retryable: false,
+        errorType: 'generation',
+        context: { operation: 'generateAndSaveKata', request }
+      })
+    }
+    
+    const fileResult = await this.saveGeneratedKata(result.kata, conflictResolution)
+    
+    // Create a GeneratedKata object for return
+    const generatedKata: GeneratedKata = {
+      slug: result.kata.metadata.slug,
+      content: result.kata,
+      generationMetadata: result.metadata!
+    }
+    
+    return { kata: generatedKata, fileResult }
   }
 
   /**
@@ -699,6 +734,16 @@ export class AIAuthoringService {
     prompt: string, 
     config: AIGenerationConfig
   ): Promise<{ content: string; usage: TokenUsage }> {
+    // Validate API key
+    if (!config.openaiApiKey || config.openaiApiKey.trim() === '') {
+      throw new AIServiceError('OpenAI API key is not configured', { 
+        retryable: false,
+        statusCode: 401,
+        errorType: 'auth',
+        context: { model: config.model }
+      })
+    }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs)
     
@@ -724,6 +769,15 @@ export class AIAuthoringService {
       })
 
       clearTimeout(timeoutId)
+
+      // Check if response exists and is not ok
+      if (!response) {
+        throw new AIServiceError('No response received from OpenAI API', { 
+          retryable: true,
+          errorType: 'network',
+          context: { model: config.model }
+        })
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -992,10 +1046,115 @@ export class AIAuthoringService {
 
 
   /**
+   * Generate content with retry logic for validation failures
+   */
+  private async generateWithRetry(request: KataGenerationRequest, config: AIGenerationConfig, attempt: number = 1): Promise<{ content: string; usage: TokenUsage }> {
+    const maxAttempts = 3
+    
+    try {
+      let prompt = this.promptEngineService.buildKataPrompt(request)
+      
+      // Add additional instructions for retry attempts
+      if (attempt > 1) {
+        prompt += `\n\n**CRITICAL RETRY INSTRUCTIONS (Attempt ${attempt}/${maxAttempts}):**
+- Previous attempt failed validation
+- MUST include timeout_ms: 5000 in YAML metadata
+- ALL code must be syntactically valid
+- Double-check YAML format exactly as specified
+- Test your solution mentally before responding
+- Include proper entry and test file specifications`
+      }
+      
+      return await this.callOpenAIWithRetry(prompt, config)
+    } catch (error) {
+      if (attempt < maxAttempts && error instanceof AIServiceError && error.errorType === 'validation') {
+        console.log(`Generation attempt ${attempt} failed, retrying with improved prompt...`)
+        await this.delay(1000 * attempt) // Progressive delay
+        return this.generateWithRetry(request, config, attempt + 1)
+      }
+      throw error
+    }
+  }
+
+  /**
    * Utility function for delays
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  /**
+   * Attempt to automatically fix common content issues
+   */
+  private attemptContentFix(content: GeneratedKataContent, errors: any[]): GeneratedKataContent | null {
+    let fixed = { ...content }
+    let hasChanges = false
+
+    for (const error of errors) {
+      if (error.message.includes('timeout_ms must be greater than 0')) {
+        // Fix missing or invalid timeout_ms
+        fixed.metadata = { ...fixed.metadata, timeout_ms: 5000 }
+        hasChanges = true
+        console.log('Fixed: Added timeout_ms: 5000')
+      }
+
+      if (error.message.includes('entry file must be specified')) {
+        // Fix missing entry file
+        const ext = this.getFileExtension(content.metadata.language)
+        fixed.metadata = { ...fixed.metadata, entry: `entry.${ext}` }
+        hasChanges = true
+        console.log(`Fixed: Added entry: entry.${ext}`)
+      }
+
+      if (error.message.includes('test file must be specified')) {
+        // Fix missing test configuration
+        const ext = this.getFileExtension(content.metadata.language)
+        fixed.metadata = { 
+          ...fixed.metadata, 
+          test: { kind: 'programmatic', file: `tests.${ext}` }
+        }
+        hasChanges = true
+        console.log(`Fixed: Added test configuration`)
+      }
+    }
+
+    return hasChanges ? fixed : null
+  }
+
+  /**
+   * Generate suggestions for fixing validation errors
+   */
+  private generateFixSuggestions(errors: any[]): string[] {
+    const suggestions: string[] = []
+
+    for (const error of errors) {
+      if (error.type === 'syntax') {
+        suggestions.push('Ensure all generated code is syntactically valid')
+        suggestions.push('Test code syntax before including in response')
+      }
+      if (error.message.includes('timeout_ms')) {
+        suggestions.push('Always include timeout_ms: 5000 in metadata for code katas')
+      }
+      if (error.message.includes('entry') || error.message.includes('test')) {
+        suggestions.push('Include proper entry and test file specifications in metadata')
+      }
+    }
+
+    return suggestions
+  }
+
+  /**
+   * Get file extension for language
+   */
+  private getFileExtension(language: string): string {
+    const extensions: Record<string, string> = {
+      'py': 'py',
+      'js': 'js', 
+      'ts': 'ts',
+      'cpp': 'cpp',
+      'none': 'txt'
+    }
+    return extensions[language] || 'txt'
   }
 }
 

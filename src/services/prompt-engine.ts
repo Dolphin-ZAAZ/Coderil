@@ -254,22 +254,23 @@ Please provide only the code solution without additional explanation.
     return {
       system: `You are an expert coding instructor creating programming challenges. Generate a complete kata (coding challenge) with all necessary files.
 
-**Output Format Requirements:**
-Your response must be structured as follows:
+**CRITICAL: Follow this EXACT format or the kata will fail validation:**
 
 \`\`\`yaml
-# meta.yaml
 slug: kata-slug-name
 title: "Kata Title"
 language: LANGUAGE_CODE
-type: "code"
+type: code
 difficulty: DIFFICULTY_LEVEL
-testKind: "programmatic"
 tags: [tag1, tag2]
+entry: entry.FILE_EXT
+test:
+  kind: programmatic
+  file: tests.FILE_EXT
+timeout_ms: 5000
 \`\`\`
 
 \`\`\`markdown
-# statement.md
 # Kata Title
 
 Brief description of the problem...
@@ -279,9 +280,10 @@ Brief description of the problem...
 - Requirement 2
 
 ## Examples
-\`\`\`
-Input: example input
-Output: expected output
+\`\`\`LANGUAGE_CODE
+// Example usage
+example_input = "test"
+expected_output = "result"
 \`\`\`
 
 ## Notes
@@ -289,34 +291,40 @@ Any additional notes or constraints...
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// entry.FILE_EXT - Starter code
+// Starter code with proper syntax
 function/class stub with TODO comments
+// MUST be syntactically valid code
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// tests.FILE_EXT - Public test cases
-Test cases that validate the solution
+// Public test cases that validate the solution
+// MUST be syntactically valid and runnable
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// hidden_tests.FILE_EXT - Additional validation (if requested)
-More comprehensive test cases
+// Hidden test cases (if requested)
+// Additional comprehensive test cases
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// solution.FILE_EXT - Reference solution
-Complete working implementation
+// Complete working solution
+// MUST be syntactically valid and pass all tests
 \`\`\`
 
-**Important Guidelines:**
-- Create realistic, educational programming challenges
-- ALWAYS include a complete working solution - solutions are mandatory for all code katas
-- Ensure all test cases pass with the provided solution
-- Use appropriate difficulty level for the target audience
-- Include edge cases in hidden tests
-- Follow language-specific best practices
-- Make the problem statement clear and unambiguous
-- The solution should demonstrate best practices and be well-commented`,
+**MANDATORY REQUIREMENTS:**
+1. ALWAYS include timeout_ms: 5000 in metadata
+2. ALL code must be syntactically valid - no syntax errors allowed
+3. Solution MUST pass all test cases
+4. Use proper file extensions: py, js, ts, cpp
+5. Include entry and test file specifications in metadata
+6. Follow exact YAML format shown above
+7. Test the solution mentally before outputting
+
+**Language-Specific Requirements:**
+- Python: Use proper indentation, valid syntax, include imports if needed
+- JavaScript: Use proper semicolons, valid syntax, include requires if needed  
+- TypeScript: Include type annotations, valid syntax
+- C++: Include necessary headers, proper syntax, valid main function for tests`,
 
       user: `Create a {difficulty} difficulty {language} coding kata based on this description:
 
