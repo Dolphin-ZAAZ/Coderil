@@ -133,30 +133,32 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
 
   // Subscribe to generation progress
   useEffect(() => {
-    if (isGenerating) {
-      // Progress updates would be handled via IPC events in a full implementation
-      // For now, we'll simulate progress
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (!prev) {
-            return {
-              stage: 'generating',
-              message: 'Generating kata content...',
-              progress: 10
-            }
-          }
-          if (prev.progress < 90) {
-            return {
-              ...prev,
-              progress: prev.progress + 10
-            }
-          }
-          return prev
-        })
-      }, 500)
-      
-      return () => clearInterval(interval)
+    if (!isGenerating) {
+      setProgress(null)
+      return
     }
+
+    // Poll for progress updates from the AI service
+    const pollProgress = async () => {
+      try {
+        if (window.electronAPI) {
+          const currentProgress = await window.electronAPI.getGenerationProgress()
+          if (currentProgress) {
+            setProgress(currentProgress)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to get generation progress:', error)
+      }
+    }
+
+    // Poll every 500ms for progress updates
+    const interval = setInterval(pollProgress, 500)
+    
+    // Get initial progress
+    pollProgress()
+    
+    return () => clearInterval(interval)
   }, [isGenerating])
 
   const loadAiConfig = async () => {
@@ -286,23 +288,35 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
         ].filter(Boolean).join('\n')
       }
 
-      // TODO: Implement IPC call for kata generation
-      // const generatedKata = await window.electronAPI.generateKata(request)
-      // onKataGenerated(generatedKata)
-      // onClose()
+      // Check if we're in Electron environment
+      if (!window.electronAPI) {
+        throw new Error('Kata generation is only available in the Electron app')
+      }
+
+      // Call the IPC handler for kata generation
+      const result = await window.electronAPI.generateAndSaveKata(request)
       
-      // For now, show that the form validation and UI works
       setProgress({
         stage: 'complete',
-        message: 'Kata generation would be implemented via IPC in the full Electron app',
-        progress: 100
+        message: 'Kata generated and saved successfully!',
+        progress: 100,
+        tokensUsed: result.kata.generationMetadata.tokensUsed,
+        estimatedCost: result.kata.generationMetadata.tokensUsed * 0.002 / 1000 // Rough estimate
       })
       
-      setTimeout(() => {
-        setError('AI kata generation IPC handler not yet implemented. This UI component is ready for integration.')
-      }, 2000)
+      // Show success notification
+      setSuccessSummary({
+        kata: result.kata,
+        tokensUsed: result.kata.generationMetadata.tokensUsed,
+        estimatedCost: result.kata.generationMetadata.tokensUsed * 0.002 / 1000,
+        generationTime: result.kata.generationMetadata.generationTime,
+        filesCreated: result.fileResult.filesCreated || []
+      })
       
-      // Reset form
+      // Notify parent component
+      _onKataGenerated(result.kata)
+      
+      // Reset form for next generation
       setFormData({
         description: '',
         language: 'py',

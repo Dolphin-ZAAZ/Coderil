@@ -249,6 +249,11 @@ export interface GenerationProgress {
   progress: number // 0-100
   tokensUsed?: number
   estimatedCost?: number
+  detailedLog?: string[]
+  currentStep?: string
+  timeElapsed?: number
+  retryAttempt?: number
+  maxRetries?: number
 }
 
 export interface TokenUsage {

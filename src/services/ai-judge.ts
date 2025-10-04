@@ -39,9 +39,9 @@ export interface AIResponse {
 
 export class AIJudgeService {
     private config: AIJudgeConfig
-    private defaultModel = 'gpt-4.1-mini'
+    private defaultModel = 'gpt-4o-mini'
     private defaultBaseUrl = 'https://api.openai.com/v1'
-    private defaultTimeout = 30000
+    private defaultTimeout = 60000
     private defaultMaxRetries = 3
 
     constructor(config: AIJudgeConfig) {

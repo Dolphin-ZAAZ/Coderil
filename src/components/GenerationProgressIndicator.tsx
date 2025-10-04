@@ -186,6 +186,47 @@ export function GenerationProgressIndicator({
           </div>
         )}
 
+        {/* Current Step and Retry Information */}
+        {progress.currentStep && (
+          <div className="current-step">
+            <span className="step-label">Current step:</span>
+            <span className="step-value">{progress.currentStep}</span>
+          </div>
+        )}
+        
+        {progress.retryAttempt && progress.maxRetries && (
+          <div className="retry-info">
+            <span className="retry-icon">🔄</span>
+            <span className="retry-text">
+              Retry {progress.retryAttempt} of {progress.maxRetries}
+            </span>
+          </div>
+        )}
+
+        {/* Detailed Execution Log */}
+        {progress.detailedLog && progress.detailedLog.length > 0 && (
+          <details className="detailed-log">
+            <summary className="log-summary">
+              <span className="log-icon">📋</span>
+              Detailed Execution Log ({progress.detailedLog.length} entries)
+            </summary>
+            <div className="log-container">
+              <div className="log-entries">
+                {progress.detailedLog.slice(-15).map((entry, index) => (
+                  <div key={index} className="log-entry">
+                    {entry}
+                  </div>
+                ))}
+              </div>
+              {progress.detailedLog.length > 15 && (
+                <div className="log-truncated">
+                  ... and {progress.detailedLog.length - 15} earlier entries
+                </div>
+              )}
+            </div>
+          </details>
+        )}
+
         {isComplete && (progress.tokensUsed || progress.estimatedCost) && (
           <div className="completion-stats">
             <div className="completion-summary">

@@ -29,11 +29,11 @@ export class AIConfigService {
   getDefaultConfig(): AIGenerationConfig {
     return {
       openaiApiKey: '',
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4o-mini',
       maxTokens: 4000,
       temperature: 0.3, // Lower temperature for more consistent output
       retryAttempts: 3,
-      timeoutMs: 30000
+      timeoutMs: 60000 // Increased to 60 seconds for better reliability
     }
   }
 
@@ -118,7 +118,7 @@ export class AIConfigService {
    */
   getAvailableModels(): string[] {
     return [
-      'gpt-4.1-mini',
+      'gpt-4o-mini',
       'gpt-4-turbo',
       'gpt-4',
       'gpt-3.5-turbo'

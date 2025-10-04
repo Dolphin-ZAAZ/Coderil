@@ -411,10 +411,17 @@ export class GenerationHistoryService {
   }
 
   /**
-   * Load history from localStorage
+   * Load history from localStorage (only available in renderer process)
    */
   private loadHistory(): void {
     try {
+      // Check if we're in the main process (no localStorage)
+      if (typeof localStorage === 'undefined') {
+        console.log('localStorage not available in main process, skipping history load')
+        this.history = []
+        return
+      }
+
       const stored = localStorage.getItem(this.storageKey)
       if (stored) {
         const data = JSON.parse(stored)
@@ -430,10 +437,16 @@ export class GenerationHistoryService {
   }
 
   /**
-   * Save history to localStorage
+   * Save history to localStorage (only available in renderer process)
    */
   private saveHistory(): void {
     try {
+      // Check if we're in the main process (no localStorage)
+      if (typeof localStorage === 'undefined') {
+        console.log('localStorage not available in main process, skipping history save')
+        return
+      }
+
       localStorage.setItem(this.storageKey, JSON.stringify(this.history))
     } catch (error) {
       console.warn('Failed to save generation history:', error)
@@ -441,10 +454,16 @@ export class GenerationHistoryService {
   }
 
   /**
-   * Save current session to localStorage
+   * Save current session to localStorage (only available in renderer process)
    */
   private saveSession(): void {
     try {
+      // Check if we're in the main process (no localStorage)
+      if (typeof localStorage === 'undefined') {
+        console.log('localStorage not available in main process, skipping session save')
+        return
+      }
+
       if (this.currentSession) {
         localStorage.setItem(this.sessionStorageKey, JSON.stringify(this.currentSession))
       }

@@ -75,6 +75,9 @@ export function VariationGenerator({
     setError(null)
     setProgress(null)
 
+    // Set up progress polling
+    let progressInterval: NodeJS.Timeout | null = null
+
     try {
       // Build variation options
       const options: VariationOptions = {
@@ -90,40 +93,45 @@ export function VariationGenerator({
         console.log('Additional requirements:', formData.additionalRequirements)
       }
 
-      // Simulate progress updates
-      setProgress({
-        stage: 'generating',
-        message: 'Generating kata variation...',
-        progress: 20
-      })
+      // Check if we're in Electron environment
+      if (!window.electronAPI) {
+        throw new Error('Variation generation is only available in the Electron app')
+      }
 
-      // TODO: Implement IPC call for variation generation
-      // const variation = await window.electronAPI.generateVariation(sourceKata, options)
-      // onVariationGenerated(variation)
-      // onClose()
+      // Set up progress polling
+      progressInterval = setInterval(async () => {
+        try {
+          const currentProgress = await window.electronAPI.getGenerationProgress()
+          if (currentProgress) {
+            setProgress(currentProgress)
+          }
+        } catch (error) {
+          console.error('Failed to get generation progress:', error)
+        }
+      }, 500)
+
+      // Call the IPC handler for variation generation
+      const variation = await window.electronAPI.generateVariation(sourceKata, options)
       
-      // For now, show that the form validation and UI works
-      console.log('Variation options:', options) // Use the options variable
-      setTimeout(() => {
-        setProgress({
-          stage: 'complete',
-          message: 'Variation generation would be implemented via IPC in the full Electron app',
-          progress: 100
-        })
-      }, 1500)
+      setProgress({
+        stage: 'complete',
+        message: 'Variation generated successfully!',
+        progress: 100
+      })
       
-      setTimeout(() => {
-        setError('Variation generation IPC handler not yet implemented. This UI component is ready for integration.')
-        // In a real implementation, onVariationGenerated would be called here
-        console.log('onVariationGenerated callback available:', typeof onVariationGenerated === 'function')
-      }, 3000)
+      // Notify parent component and close dialog
+      onVariationGenerated(variation)
+      onClose()
 
     } catch (error) {
       console.error('Variation generation failed:', error)
       setError(error instanceof Error ? error.message : 'Variation generation failed')
     } finally {
+      // Clear progress polling
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
       setIsGenerating(false)
-      setProgress(null)
     }
   }
 
@@ -315,6 +323,11 @@ export function VariationGenerator({
                   <div className="progress-header">
                     <span className="progress-stage">{progress.stage}</span>
                     <span className="progress-percentage">{progress.progress}%</span>
+                    {progress.timeElapsed && (
+                      <span className="progress-time">
+                        {Math.round((Date.now() - progress.timeElapsed) / 1000)}s
+                      </span>
+                    )}
                   </div>
                   <div className="progress-bar">
                     <div 
@@ -323,6 +336,19 @@ export function VariationGenerator({
                     />
                   </div>
                   <div className="progress-message">{progress.message}</div>
+                  
+                  {progress.currentStep && (
+                    <div className="progress-current-step">
+                      Current step: {progress.currentStep}
+                    </div>
+                  )}
+                  
+                  {progress.retryAttempt && progress.maxRetries && (
+                    <div className="progress-retry-info">
+                      Retry {progress.retryAttempt} of {progress.maxRetries}
+                    </div>
+                  )}
+                  
                   {progress.tokensUsed && (
                     <div className="progress-stats">
                       Tokens used: {progress.tokensUsed}
@@ -330,6 +356,20 @@ export function VariationGenerator({
                         <span> • Estimated cost: ${progress.estimatedCost.toFixed(4)}</span>
                       )}
                     </div>
+                  )}
+                  
+                  {/* Detailed execution log */}
+                  {progress.detailedLog && progress.detailedLog.length > 0 && (
+                    <details className="progress-detailed-log">
+                      <summary>Detailed Execution Log ({progress.detailedLog.length} entries)</summary>
+                      <div className="log-entries">
+                        {progress.detailedLog.slice(-10).map((entry, index) => (
+                          <div key={index} className="log-entry">
+                            {entry}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   )}
                 </>
               )}

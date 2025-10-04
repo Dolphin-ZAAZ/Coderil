@@ -14,6 +14,7 @@ import { ContentValidatorService } from './content-validator'
 import { FileGeneratorService, FileGenerationResult, SlugConflictResolution } from './file-generator'
 import { GenerationHistoryService } from './generation-history'
 import { aiAuthoringErrorHandler } from './ai-authoring-error-handler'
+import { errorHandler } from './error-handler'
 
 export interface VariationOptions {
   difficultyAdjustment: 'easier' | 'harder' | 'same'
@@ -28,6 +29,11 @@ export interface GenerationProgress {
   progress: number // 0-100
   tokensUsed?: number
   estimatedCost?: number
+  detailedLog?: string[]
+  currentStep?: string
+  timeElapsed?: number
+  retryAttempt?: number
+  maxRetries?: number
 }
 
 export interface TokenUsage {
@@ -94,7 +100,9 @@ export class AIAuthoringService {
       this.updateProgress({
         stage: 'initializing',
         message: 'Initializing kata generation...',
-        progress: 0
+        progress: 0,
+        currentStep: 'Starting generation process',
+        detailedLog: []
       })
 
       // Validate configuration
@@ -112,8 +120,10 @@ export class AIAuthoringService {
       // Generate prompt
       this.updateProgress({
         stage: 'generating',
-        message: 'Generating kata content...',
-        progress: 20
+        message: 'Building prompt and calling OpenAI API...',
+        progress: 20,
+        currentStep: 'Preparing API request',
+        detailedLog: this.currentProgress?.detailedLog || []
       })
 
       const response = await this.generateWithRetry(request, config)
@@ -121,8 +131,12 @@ export class AIAuthoringService {
       // Parse response
       this.updateProgress({
         stage: 'parsing',
-        message: 'Parsing generated content...',
-        progress: 60
+        message: 'Parsing AI-generated content...',
+        progress: 60,
+        currentStep: 'Processing API response',
+        tokensUsed: response.usage.totalTokens,
+        estimatedCost: response.usage.estimatedCost,
+        detailedLog: this.currentProgress?.detailedLog || []
       })
 
       let content = this.responseParserService.parseKataResponse(response.content, request.type)
@@ -130,8 +144,10 @@ export class AIAuthoringService {
       // Validate content
       this.updateProgress({
         stage: 'validating',
-        message: 'Validating generated content...',
-        progress: 80
+        message: 'Validating generated content structure and syntax...',
+        progress: 80,
+        currentStep: 'Running content validation',
+        detailedLog: this.currentProgress?.detailedLog || []
       })
 
       const validationResult = await this.contentValidatorService.validateGeneratedContent(content)
@@ -233,9 +249,15 @@ export class AIAuthoringService {
         config.model || 'unknown'
       )
       
-      // Handle and log the error through the specialized error handler
+      // Handle and log the error through both specialized and global error handlers
       if (error instanceof AIServiceError) {
         aiAuthoringErrorHandler.handleGenerationError(error, request)
+        // Also integrate with global error handler for UI notifications
+        errorHandler.handleAIServiceError(error, { 
+          operation: 'generateKata', 
+          request,
+          retry: () => this.generateKata(request)
+        })
         throw error
       }
       
@@ -249,6 +271,12 @@ export class AIAuthoringService {
       )
       
       aiAuthoringErrorHandler.handleGenerationError(wrappedError, request)
+      // Also integrate with global error handler for UI notifications
+      errorHandler.handleAIServiceError(wrappedError, { 
+        operation: 'generateKata', 
+        request,
+        retry: () => this.generateKata(request)
+      })
       
       return {
         success: false,
@@ -396,9 +424,16 @@ export class AIAuthoringService {
         progress: 0
       })
       
-      // Handle and log the error through the specialized error handler
+      // Handle and log the error through both specialized and global error handlers
       if (error instanceof AIServiceError) {
         aiAuthoringErrorHandler.handleVariationError(error, sourceKata, options)
+        // Also integrate with global error handler for UI notifications
+        errorHandler.handleAIServiceError(error, { 
+          operation: 'generateVariation', 
+          sourceKata: sourceKata.slug,
+          options,
+          retry: () => this.generateVariation(sourceKata, options)
+        })
         throw error
       }
       
@@ -412,6 +447,13 @@ export class AIAuthoringService {
       )
       
       aiAuthoringErrorHandler.handleVariationError(wrappedError, sourceKata, options)
+      // Also integrate with global error handler for UI notifications
+      errorHandler.handleAIServiceError(wrappedError, { 
+        operation: 'generateVariation', 
+        sourceKata: sourceKata.slug,
+        options,
+        retry: () => this.generateVariation(sourceKata, options)
+      })
       throw wrappedError
     }
   }
@@ -501,9 +543,22 @@ export class AIAuthoringService {
         progress: 0
       })
 
-      // Handle and log the error through the specialized error handler
+      // Handle and log the error through both specialized and global error handlers
       if (error instanceof AIServiceError) {
         aiAuthoringErrorHandler.handleSaveError(error, content)
+        // Also integrate with global error handler for UI notifications
+        if (error.retryable) {
+          errorHandler.handleFileSystemError(error as any, { 
+            operation: 'saveGeneratedKata', 
+            slug: content.metadata?.slug,
+            retry: () => this.saveGeneratedKata(content, conflictResolution)
+          })
+        } else {
+          errorHandler.handleError(error, { 
+            operation: 'saveGeneratedKata', 
+            slug: content.metadata?.slug
+          })
+        }
         throw error
       }
 
@@ -517,6 +572,11 @@ export class AIAuthoringService {
       )
 
       aiAuthoringErrorHandler.handleSaveError(wrappedError, content)
+      // Also integrate with global error handler for UI notifications
+      errorHandler.handleError(wrappedError, { 
+        operation: 'saveGeneratedKata', 
+        slug: content.metadata?.slug
+      })
       throw wrappedError
     }
   }
@@ -644,7 +704,7 @@ export class AIAuthoringService {
     if (!result.success || !result.kata) {
       throw new AIServiceError(result.error || 'Failed to generate kata', {
         retryable: false,
-        errorType: 'generation',
+        errorType: 'unknown',
         context: { operation: 'generateAndSaveKata', request }
       })
     }
@@ -708,13 +768,18 @@ export class AIAuthoringService {
           retryConfig.maxDelayMs
         )
         
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         console.warn(`API call failed (attempt ${attempt}/${retryConfig.maxAttempts}), retrying in ${delay}ms:`, error)
         
-        // Update progress to show retry
+        // Update progress to show retry with detailed information
         this.updateProgress({
           stage: 'generating',
-          message: `API call failed, retrying in ${Math.round(delay / 1000)}s... (attempt ${attempt}/${retryConfig.maxAttempts})`,
-          progress: 20 + (attempt / retryConfig.maxAttempts) * 20
+          message: `API call failed: ${errorMessage}. Retrying in ${Math.round(delay / 1000)}s...`,
+          progress: 20 + (attempt / retryConfig.maxAttempts) * 20,
+          currentStep: `Retry attempt ${attempt} of ${retryConfig.maxAttempts}`,
+          retryAttempt: attempt,
+          maxRetries: retryConfig.maxAttempts,
+          detailedLog: this.currentProgress?.detailedLog || []
         })
         
         await this.delay(delay)
@@ -745,7 +810,28 @@ export class AIAuthoringService {
     }
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs)
+    const startTime = Date.now()
+    
+    // Enhanced timeout with progress updates
+    const timeoutId = setTimeout(() => {
+      this.updateProgress({
+        stage: 'generating',
+        message: `API call timeout after ${config.timeoutMs}ms - aborting request`,
+        progress: 25,
+        currentStep: 'Request timeout',
+        detailedLog: this.currentProgress?.detailedLog || []
+      })
+      controller.abort()
+    }, config.timeoutMs)
+    
+    // Progress update for API call start
+    this.updateProgress({
+      stage: 'generating',
+      message: `Sending request to OpenAI (${config.model})...`,
+      progress: 25,
+      currentStep: `API call to ${config.model}`,
+      detailedLog: this.currentProgress?.detailedLog || []
+    })
     
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -769,6 +855,15 @@ export class AIAuthoringService {
       })
 
       clearTimeout(timeoutId)
+      
+      const responseTime = Date.now() - startTime
+      this.updateProgress({
+        stage: 'generating',
+        message: `Received API response in ${responseTime}ms, processing...`,
+        progress: 50,
+        currentStep: 'Processing API response',
+        detailedLog: this.currentProgress?.detailedLog || []
+      })
 
       // Check if response exists and is not ok
       if (!response) {
@@ -912,7 +1007,7 @@ export class AIAuthoringService {
    */
   private getModelCostPer1kTokens(model: string): number {
     const costs: Record<string, number> = {
-      'gpt-4.1-mini': 0.0015, // Estimated cost
+      'gpt-4o-mini': 0.00015, // $0.15 per 1M input tokens, $0.6 per 1M output tokens
       'gpt-4-turbo': 0.01,
       'gpt-4': 0.03,
       'gpt-3.5-turbo': 0.002
@@ -938,6 +1033,32 @@ export class AIAuthoringService {
    * Update generation progress and notify callbacks
    */
   private updateProgress(progress: GenerationProgress): void {
+    // Add timestamp and detailed logging
+    const timestamp = new Date().toISOString()
+    const logEntry = `[${timestamp}] ${progress.stage.toUpperCase()}: ${progress.message}`
+    
+    // Initialize detailed log if not present
+    if (!progress.detailedLog) {
+      progress.detailedLog = []
+    }
+    
+    // Add current log entry
+    progress.detailedLog.push(logEntry)
+    
+    // Keep only last 50 log entries to prevent memory issues
+    if (progress.detailedLog.length > 50) {
+      progress.detailedLog = progress.detailedLog.slice(-50)
+    }
+    
+    // Add time elapsed if we have a start time
+    if (this.currentProgress?.timeElapsed !== undefined) {
+      progress.timeElapsed = Date.now() - (this.currentProgress.timeElapsed || Date.now())
+    } else {
+      progress.timeElapsed = Date.now()
+    }
+    
+    console.log(`[AI Authoring] ${logEntry}`)
+    
     this.currentProgress = progress
     this.progressCallbacks.forEach(callback => {
       try {

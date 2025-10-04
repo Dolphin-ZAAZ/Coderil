@@ -956,14 +956,18 @@ ipcMain.handle('generate-kata', async (_event, request: any) => {
     const { AIAuthoringService } = await import('../src/services/ai-authoring')
     const aiAuthoringService = AIAuthoringService.getInstance()
     
-    const generatedKata = await aiAuthoringService.generateKata(request)
+    const result = await aiAuthoringService.generateKata(request)
+    
+    if (!result.success || !result.kata || !result.metadata) {
+      throw new Error(result.error || 'Failed to generate kata')
+    }
     
     console.log('Kata generation completed:', {
-      slug: generatedKata.slug,
-      tokensUsed: generatedKata.generationMetadata.tokensUsed
+      slug: result.kata.metadata.slug,
+      tokensUsed: result.metadata.tokensUsed
     })
     
-    return generatedKata
+    return result
   } catch (error: any) {
     console.error('Failed to generate kata:', error)
     throw error

@@ -17,11 +17,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   })
   const [aiConfig, setAiConfig] = useState<AIGenerationConfig>({
     openaiApiKey: '',
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o-mini',
     maxTokens: 4000,
     temperature: 0.7,
     retryAttempts: 3,
-    timeoutMs: 30000
+    timeoutMs: 60000
   })
   const [availableModels, setAvailableModels] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -248,7 +248,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     ))}
                   </select>
                   <p className="setting-description">
-                    Choose the AI model for kata generation and judging. GPT-4.1-mini is recommended for best results.
+                    Choose the AI model for kata generation and judging. GPT-4o-mini is recommended for best results.
                   </p>
                 </div>
 

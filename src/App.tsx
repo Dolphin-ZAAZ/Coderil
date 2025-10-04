@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType } from '@/types'
+import { Kata, KataDetails, ExecutionResult, AIJudgment, Language, KataFilters, AutoContinueNotification as AutoContinueNotificationType, GeneratedKata } from '@/types'
 import { StatementPanel, CodeEditorPanel, ResultsPanel, KataSelector, ProgressDisplay, ResizablePanel, SettingsPanel, ShortformAnswerPanel, MultiQuestionPanel, AIAuthoringDialog } from '@/components'
 import { DependencyWarning } from '@/components/DependencyWarning'
 import { AutoContinueNotification } from '@/components/AutoContinueNotification'
@@ -243,10 +243,26 @@ function App() {
     setShowAIDialog(false)
   }
 
-  const handleKataGenerated = () => {
+  const handleKataGenerated = (generatedKata?: GeneratedKata) => {
     // Refresh the kata list after generation
     loadKatas()
     setShowAIDialog(false)
+    
+    // If a kata was generated, optionally auto-select it
+    if (generatedKata && generatedKata.content.metadata) {
+      // Find the generated kata in the refreshed list and select it
+      setTimeout(async () => {
+        try {
+          const refreshedKatas = await window.electronAPI?.getKatas() || []
+          const newKata = refreshedKatas.find(k => k.slug === generatedKata.content.metadata.slug)
+          if (newKata) {
+            await handleKataSelect(newKata)
+          }
+        } catch (error) {
+          console.error('Failed to auto-select generated kata:', error)
+        }
+      }, 500) // Small delay to ensure file system operations complete
+    }
   }
 
   const handleRandomKataSelect = async () => {
