@@ -90,7 +90,12 @@
   - Add change tracking and revert functionality
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 8. Create file generation and saving functionality
+- [x] 8. Create file generation and saving functionality
+
+
+
+
+
   - Implement file generation logic for all kata types including multi-question configurations
   - Add slug generation and conflict detection for existing katas
   - Create directory structure creation and file writing for all supported formats

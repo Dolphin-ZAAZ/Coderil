@@ -4,6 +4,7 @@ import { AIConfigService } from '../ai-config'
 import { PromptEngineService } from '../prompt-engine'
 import { ResponseParserService } from '../response-parser'
 import { ContentValidatorService } from '../content-validator'
+import { FileGeneratorService } from '../file-generator'
 import { KataGenerationRequest, GeneratedKataContent, Language, KataType, Difficulty } from '@/types'
 
 // Mock the dependencies
@@ -11,6 +12,7 @@ vi.mock('../ai-config')
 vi.mock('../prompt-engine')
 vi.mock('../response-parser')
 vi.mock('../content-validator')
+vi.mock('../file-generator')
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -22,6 +24,7 @@ describe('AIAuthoringService', () => {
   let mockPromptEngine: any
   let mockResponseParser: any
   let mockContentValidator: any
+  let mockFileGenerator: any
 
   const mockConfig = {
     openaiApiKey: 'sk-test-key',
@@ -132,11 +135,25 @@ def reverse_string(s):
       })
     }
 
+    mockFileGenerator = {
+      generateKataFiles: vi.fn().mockResolvedValue({
+        success: true,
+        slug: 'reverse-string',
+        path: '/test/katas/reverse-string',
+        filesCreated: ['meta.yaml', 'statement.md', 'entry.py', 'tests.py', 'solution.py'],
+        errors: [],
+        warnings: []
+      }),
+      slugExists: vi.fn().mockReturnValue(false),
+      generateUniqueSlug: vi.fn().mockImplementation((slug) => slug)
+    }
+
     // Mock the getInstance methods
     vi.mocked(AIConfigService.getInstance).mockReturnValue(mockAIConfig)
     vi.mocked(PromptEngineService.getInstance).mockReturnValue(mockPromptEngine)
     vi.mocked(ResponseParserService.getInstance).mockReturnValue(mockResponseParser)
     vi.mocked(ContentValidatorService.getInstance).mockReturnValue(mockContentValidator)
+    vi.mocked(FileGeneratorService.getInstance).mockReturnValue(mockFileGenerator)
 
     // Reset the singleton instance to force re-initialization
     // @ts-ignore - accessing private static property for testing
@@ -530,6 +547,119 @@ def reverse_string(s):
       expect(result.slug).not.toContain(' ')
       expect(result.slug).not.toContain('!')
       expect(result.slug).not.toContain('&')
+    })
+  })
+
+  describe('file generation', () => {
+    it('should save generated kata to file system', async () => {
+      const result = await service.saveGeneratedKata(mockGeneratedContent)
+
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
+        mockGeneratedContent,
+        undefined
+      )
+      expect(result.success).toBe(true)
+      expect(result.slug).toBe('reverse-string')
+      expect(result.filesCreated).toContain('meta.yaml')
+    })
+
+    it('should handle file generation errors', async () => {
+      mockFileGenerator.generateKataFiles.mockResolvedValue({
+        success: false,
+        slug: 'reverse-string',
+        path: '/test/katas/reverse-string',
+        filesCreated: [],
+        errors: ['Failed to write file'],
+        warnings: []
+      })
+
+      await expect(service.saveGeneratedKata(mockGeneratedContent)).rejects.toThrow(
+        'Failed to save kata files: Failed to write file'
+      )
+    })
+
+    it('should handle slug conflicts with resolution', async () => {
+      const conflictResolution = {
+        action: 'overwrite' as const
+      }
+
+      await service.saveGeneratedKata(mockGeneratedContent, conflictResolution)
+
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
+        mockGeneratedContent,
+        conflictResolution
+      )
+    })
+
+    it('should check if slug exists', () => {
+      mockFileGenerator.slugExists.mockReturnValue(true)
+
+      const exists = service.slugExists('existing-kata')
+
+      expect(exists).toBe(true)
+      expect(mockFileGenerator.slugExists).toHaveBeenCalledWith('existing-kata')
+    })
+
+    it('should generate unique slugs', () => {
+      mockFileGenerator.generateUniqueSlug.mockReturnValue('unique-kata-2')
+
+      const uniqueSlug = service.generateUniqueSlug('unique-kata')
+
+      expect(uniqueSlug).toBe('unique-kata-2')
+      expect(mockFileGenerator.generateUniqueSlug).toHaveBeenCalledWith('unique-kata')
+    })
+
+    it('should generate and save kata in one operation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      const result = await service.generateAndSaveKata(mockRequest)
+
+      expect(result.kata).toBeDefined()
+      expect(result.fileResult).toBeDefined()
+      expect(result.kata.slug).toBe('reverse-string')
+      expect(result.fileResult.success).toBe(true)
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalled()
+    })
+
+    it('should handle generation and save with conflict resolution', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAPIResponse)
+      })
+
+      const conflictResolution = {
+        action: 'rename' as const,
+        newSlug: 'reverse-string-v2'
+      }
+
+      const result = await service.generateAndSaveKata(mockRequest, conflictResolution)
+
+      expect(result.kata).toBeDefined()
+      expect(result.fileResult).toBeDefined()
+      expect(mockFileGenerator.generateKataFiles).toHaveBeenCalledWith(
+        expect.any(Object),
+        conflictResolution
+      )
+    })
+
+    it('should update progress during file saving', async () => {
+      const progressUpdates: any[] = []
+      const unsubscribe = service.onProgress((progress) => {
+        progressUpdates.push(progress)
+      })
+
+      await service.saveGeneratedKata(mockGeneratedContent)
+
+      const savingProgress = progressUpdates.find(p => p.message.includes('Saving kata files'))
+      const completeProgress = progressUpdates.find(p => p.message.includes('Kata saved successfully'))
+
+      expect(savingProgress).toBeDefined()
+      expect(completeProgress).toBeDefined()
+
+      unsubscribe()
     })
   })
 })

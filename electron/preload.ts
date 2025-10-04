@@ -80,6 +80,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testOpenAIConnection: (apiKey?: string) => ipcRenderer.invoke('test-openai-connection', apiKey),
   getAvailableModels: () => ipcRenderer.invoke('get-available-models'),
   validateAiConfig: (config: any) => ipcRenderer.invoke('validate-ai-config', config),
+  
+  // AI Kata Generation
+  generateKata: (request: any) => ipcRenderer.invoke('generate-kata', request),
+  generateVariation: (sourceKata: any, options: any) => ipcRenderer.invoke('generate-variation', sourceKata, options),
+  validateGeneratedContent: (content: any) => ipcRenderer.invoke('validate-generated-content', content),
+  saveGeneratedKata: (content: any, conflictResolution?: any) => ipcRenderer.invoke('save-generated-kata', content, conflictResolution),
+  generateAndSaveKata: (request: any, conflictResolution?: any) => ipcRenderer.invoke('generate-and-save-kata', request, conflictResolution),
+  checkSlugExists: (slug: string) => ipcRenderer.invoke('check-slug-exists', slug),
+  generateUniqueSlug: (baseSlug: string) => ipcRenderer.invoke('generate-unique-slug', baseSlug),
+  getGenerationProgress: () => ipcRenderer.invoke('get-generation-progress'),
+  getSessionTokenUsage: () => ipcRenderer.invoke('get-session-token-usage'),
+  resetSessionTokenUsage: () => ipcRenderer.invoke('reset-session-token-usage'),
 })
 
 console.log('Preload script completed successfully')
@@ -123,6 +135,16 @@ interface ElectronAPI {
   testOpenAIConnection: (apiKey?: string) => Promise<{ success: boolean, error?: string, models?: string[] }>
   getAvailableModels: () => Promise<string[]>
   validateAiConfig: (config: any) => Promise<{ isValid: boolean, errors: string[] }>
+  generateKata: (request: any) => Promise<any>
+  generateVariation: (sourceKata: any, options: any) => Promise<any>
+  validateGeneratedContent: (content: any) => Promise<{ isValid: boolean, errors: string[], warnings: string[] }>
+  saveGeneratedKata: (content: any, conflictResolution?: any) => Promise<{ success: boolean, slug: string, path: string, filesCreated: string[], errors: string[], warnings: string[] }>
+  generateAndSaveKata: (request: any, conflictResolution?: any) => Promise<{ kata: any, fileResult: any }>
+  checkSlugExists: (slug: string) => Promise<boolean>
+  generateUniqueSlug: (baseSlug: string) => Promise<string>
+  getGenerationProgress: () => Promise<any>
+  getSessionTokenUsage: () => Promise<{ promptTokens: number, completionTokens: number, totalTokens: number, estimatedCost: number }>
+  resetSessionTokenUsage: () => Promise<boolean>
 }
 
 declare global {

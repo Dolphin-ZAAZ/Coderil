@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { GenerationPreview } from './GenerationPreview'
-import { GeneratedKataContent, KataMetadata } from '@/types'
+import { GeneratedKataContent } from '@/types'
 
 // Example usage of GenerationPreview component
 export function GenerationPreviewExample() {

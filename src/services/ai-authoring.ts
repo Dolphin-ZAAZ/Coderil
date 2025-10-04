@@ -10,6 +10,7 @@ import { AIConfigService } from './ai-config'
 import { PromptEngineService } from './prompt-engine'
 import { ResponseParserService } from './response-parser'
 import { ContentValidatorService } from './content-validator'
+import { FileGeneratorService, FileGenerationResult, SlugConflictResolution } from './file-generator'
 
 export interface VariationOptions {
   difficultyAdjustment: 'easier' | 'harder' | 'same'
@@ -49,6 +50,7 @@ export class AIAuthoringService {
   private promptEngineService: PromptEngineService
   private responseParserService: ResponseParserService
   private contentValidatorService: ContentValidatorService
+  private fileGeneratorService: FileGeneratorService
   
   // Progress tracking
   private currentProgress: GenerationProgress | null = null
@@ -67,6 +69,7 @@ export class AIAuthoringService {
     this.promptEngineService = PromptEngineService.getInstance()
     this.responseParserService = ResponseParserService.getInstance()
     this.contentValidatorService = ContentValidatorService.getInstance()
+    this.fileGeneratorService = FileGeneratorService.getInstance()
   }
 
   static getInstance(): AIAuthoringService {
@@ -297,15 +300,43 @@ export class AIAuthoringService {
   /**
    * Save generated kata to the file system
    */
-  async saveGeneratedKata(_content: GeneratedKataContent, _slug: string): Promise<void> {
+  async saveGeneratedKata(
+    content: GeneratedKataContent, 
+    conflictResolution?: SlugConflictResolution
+  ): Promise<FileGenerationResult> {
     try {
-      // This would integrate with the kata manager service to save files
-      // For now, we'll throw an error indicating this needs to be implemented
-      // in the file generation task
-      throw new Error('File generation not yet implemented - this will be handled in task 8')
+      this.updateProgress({
+        stage: 'generating',
+        message: 'Saving kata files...',
+        progress: 90
+      })
+
+      const result = await this.fileGeneratorService.generateKataFiles(content, conflictResolution)
+      
+      if (!result.success) {
+        throw new AIServiceError(
+          `Failed to save kata files: ${result.errors.join(', ')}`,
+          { retryable: false }
+        )
+      }
+
+      this.updateProgress({
+        stage: 'complete',
+        message: `Kata saved successfully to ${result.path}`,
+        progress: 100
+      })
+
+      return result
     } catch (error) {
+      this.updateProgress({
+        stage: 'error',
+        message: `Failed to save kata: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        progress: 0
+      })
+
       throw new AIServiceError(
-        `Failed to save kata: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to save kata: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { retryable: false }
       )
     }
   }
@@ -349,6 +380,33 @@ export class AIAuthoringService {
       totalTokens: 0,
       estimatedCost: 0
     }
+  }
+
+  /**
+   * Check if a kata slug already exists
+   */
+  slugExists(slug: string): boolean {
+    return this.fileGeneratorService.slugExists(slug)
+  }
+
+  /**
+   * Generate a unique slug by appending a number if needed
+   */
+  generateUniqueSlug(baseSlug: string): string {
+    return this.fileGeneratorService.generateUniqueSlug(baseSlug)
+  }
+
+  /**
+   * Generate a complete kata and save it to the file system
+   */
+  async generateAndSaveKata(
+    request: KataGenerationRequest,
+    conflictResolution?: SlugConflictResolution
+  ): Promise<{ kata: GeneratedKata; fileResult: FileGenerationResult }> {
+    const kata = await this.generateKata(request)
+    const fileResult = await this.saveGeneratedKata(kata.content, conflictResolution)
+    
+    return { kata, fileResult }
   }
 
   /**

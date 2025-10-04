@@ -14,4 +14,5 @@ export { AutoContinueService } from './auto-continue';
 // export { AIConfigService } from './ai-config';           // Uses DatabaseService
 // export { ContentValidatorService } from './content-validator'; // Uses fs, child_process
 // export { AIAuthoringService } from './ai-authoring';    // Uses AIConfigService and ContentValidatorService
+// export { FileGeneratorService } from './file-generator'; // Uses fs, path, yaml
 // export { errorHandler } from './error-handler';         // Can be used but imported directly

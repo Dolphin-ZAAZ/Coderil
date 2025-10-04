@@ -926,3 +926,145 @@ ipcMain.handle('validate-ai-config', async (_event, config: any) => {
     return { isValid: false, errors: ['Validation failed'] }
   }
 })
+
+// AI Kata Generation IPC handlers
+ipcMain.handle('generate-kata', async (_event, request: any) => {
+  try {
+    console.log('Generating kata:', request)
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const result = await aiAuthoringService.generateKata(request)
+    console.log('Kata generation completed:', result.slug)
+    return result
+  } catch (error: any) {
+    console.error('Failed to generate kata:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('generate-variation', async (_event, sourceKata: any, options: any) => {
+  try {
+    console.log('Generating kata variation:', sourceKata.slug, options)
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const result = await aiAuthoringService.generateVariation(sourceKata, options)
+    console.log('Variation generation completed:', result.slug)
+    return result
+  } catch (error: any) {
+    console.error('Failed to generate variation:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('validate-generated-content', async (_event, content: any) => {
+  try {
+    console.log('Validating generated content')
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const result = await aiAuthoringService.validateGeneration(content)
+    console.log('Content validation completed:', result.isValid ? 'valid' : 'invalid')
+    return result
+  } catch (error: any) {
+    console.error('Failed to validate generated content:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('save-generated-kata', async (_event, content: any, conflictResolution?: any) => {
+  try {
+    console.log('Saving generated kata:', content.metadata.slug)
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const result = await aiAuthoringService.saveGeneratedKata(content, conflictResolution)
+    console.log('Kata saved successfully:', result.slug, 'at', result.path)
+    return result
+  } catch (error: any) {
+    console.error('Failed to save generated kata:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('generate-and-save-kata', async (_event, request: any, conflictResolution?: any) => {
+  try {
+    console.log('Generating and saving kata:', request)
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const result = await aiAuthoringService.generateAndSaveKata(request, conflictResolution)
+    console.log('Kata generated and saved:', result.kata.slug)
+    return result
+  } catch (error: any) {
+    console.error('Failed to generate and save kata:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('check-slug-exists', async (_event, slug: string) => {
+  try {
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const exists = aiAuthoringService.slugExists(slug)
+    console.log('Slug exists check:', slug, exists)
+    return exists
+  } catch (error: any) {
+    console.error('Failed to check slug existence:', error)
+    return false
+  }
+})
+
+ipcMain.handle('generate-unique-slug', async (_event, baseSlug: string) => {
+  try {
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    const uniqueSlug = aiAuthoringService.generateUniqueSlug(baseSlug)
+    console.log('Generated unique slug:', baseSlug, '->', uniqueSlug)
+    return uniqueSlug
+  } catch (error: any) {
+    console.error('Failed to generate unique slug:', error)
+    return baseSlug
+  }
+})
+
+ipcMain.handle('get-generation-progress', async () => {
+  try {
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    return aiAuthoringService.getCurrentProgress()
+  } catch (error: any) {
+    console.error('Failed to get generation progress:', error)
+    return null
+  }
+})
+
+ipcMain.handle('get-session-token-usage', async () => {
+  try {
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    return aiAuthoringService.getSessionTokenUsage()
+  } catch (error: any) {
+    console.error('Failed to get session token usage:', error)
+    return { promptTokens: 0, completionTokens: 0, totalTokens: 0, estimatedCost: 0 }
+  }
+})
+
+ipcMain.handle('reset-session-token-usage', async () => {
+  try {
+    const { AIAuthoringService } = await import('../src/services/ai-authoring')
+    const aiAuthoringService = AIAuthoringService.getInstance()
+    
+    aiAuthoringService.resetSessionTokenUsage()
+    console.log('Session token usage reset')
+    return true
+  } catch (error: any) {
+    console.error('Failed to reset session token usage:', error)
+    return false
+  }
+})
