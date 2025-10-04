@@ -273,32 +273,36 @@ timeout_ms: 5000
 \`\`\`markdown
 # Kata Title
 
-Brief description of the problem...
+Write a clear, specific problem description here. Explain what the function/program should do.
 
 ## Requirements
-- Requirement 1
-- Requirement 2
+- Specific requirement 1 (e.g., "Function must be named 'calculate_sum'")
+- Specific requirement 2 (e.g., "Must handle negative numbers")
+- Specific requirement 3 (e.g., "Return None for empty input")
 
 ## Examples
 \`\`\`LANGUAGE_CODE
-// Example usage
-example_input = "test"
-expected_output = "result"
+# Show concrete input/output examples
+input_example = "actual_value"
+expected_output = "actual_result"
 \`\`\`
 
 ## Notes
-Any additional notes or constraints...
+Any additional constraints, edge cases, or clarifications...
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// Starter code with proper syntax
-function/class stub with TODO comments
-// MUST be syntactically valid code
+// Starter code - provide a function/class stub that students need to implement
+// Example for Python: def function_name(param): pass
+// Example for JavaScript: function functionName(param) { /* TODO: implement */ }
+// MUST be syntactically valid but incomplete - students should fill in the logic
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// Public test cases that validate the solution
-// MUST be syntactically valid and runnable
+// Public test cases - write actual test code that validates the solution
+// Example for Python: assert function_name("input") == "expected_output"
+// Example for JavaScript: console.assert(functionName("input") === "expected_output")
+// MUST be syntactically valid and runnable test code
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
@@ -307,8 +311,9 @@ function/class stub with TODO comments
 \`\`\`
 
 \`\`\`LANGUAGE_CODE
-// Complete working solution
-// MUST be syntactically valid and pass all tests
+// Complete working solution - provide the full implementation
+// This should be the complete, correct solution that passes all tests
+// MUST be syntactically valid and demonstrate the expected approach
 \`\`\`
 
 **MANDATORY REQUIREMENTS:**
@@ -319,16 +324,54 @@ function/class stub with TODO comments
 5. Include entry and test file specifications in metadata
 6. Follow exact YAML format shown above
 7. Test the solution mentally before outputting
+8. DO NOT use placeholder text or comments like "Write your explanation here"
+9. DO NOT generate template files - generate actual working content
+10. The starter code should be INCOMPLETE - students need to implement the logic
+11. The statement should be a REAL problem description, not placeholder text
 
 **Language-Specific Requirements:**
 - Python: Use proper indentation, valid syntax, include imports if needed
 - JavaScript: Use proper semicolons, valid syntax, include requires if needed  
 - TypeScript: Include type annotations, valid syntax
-- C++: Include necessary headers, proper syntax, valid main function for tests`,
+- C++: Include necessary headers, proper syntax, valid main function for tests
+
+**EXAMPLE OF CORRECT STARTER CODE (Python):**
+\`\`\`python
+def solve_problem(input_param):
+    """
+    Brief description of what this function should do.
+    
+    Args:
+        input_param: Description of the parameter
+        
+    Returns:
+        Description of what should be returned
+    """
+    # TODO: Implement the solution
+    pass
+\`\`\`
+
+**EXAMPLE OF CORRECT TEST CODE (Python):**
+\`\`\`python
+from entry import solve_problem
+
+def test_basic_case():
+    assert solve_problem("test_input") == "expected_output"
+
+def test_edge_case():
+    assert solve_problem("") == None
+\`\`\``,
 
       user: `Create a {difficulty} difficulty {language} coding kata based on this description:
 
 {description}
+
+IMPORTANT: 
+- Generate REAL, WORKING code - not placeholder text or comments
+- The starter code should be INCOMPLETE (with TODO or pass statements)
+- The statement should describe a SPECIFIC programming problem
+- All code blocks must be syntactically valid
+- Follow the EXACT format shown in the examples
 
 Please generate all required files following the exact format specified above.`,
       

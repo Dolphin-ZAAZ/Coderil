@@ -75,36 +75,54 @@ export class ResponseParserService {
   extractCodeBlocks(response: string): Record<string, string> {
     const codeBlocks: Record<string, string> = {}
     
-    // Match code blocks with optional language and label
-    const codeBlockRegex = /```(?:(\w+))?\s*(?:\/\/\s*(.+?))?\n([\s\S]*?)```/g
+    // Match code blocks with optional language and comments
+    const codeBlockRegex = /```(?:(\w+))?\s*(?:#\s*(.+?))?\n([\s\S]*?)```/g
     let match
 
     while ((match = codeBlockRegex.exec(response)) !== null) {
-      const [, language, label, code] = match
+      const [, language, comment, code] = match
+      
+      // Skip empty or placeholder code blocks
+      if (!code.trim() || code.includes('Write your explanation here') || code.includes('[Replace this with')) {
+        continue
+      }
       
       // Determine the key for this code block
       let key = 'code'
-      if (label) {
-        key = label.toLowerCase().replace(/\s+/g, '_')
-      } else if (language) {
-        // Try to infer purpose from language and content
-        if (code.includes('test') || code.includes('assert') || code.includes('expect')) {
+      
+      // Check for file name comments (e.g., # entry.py, # tests.py)
+      if (comment) {
+        const fileName = comment.toLowerCase().replace(/\.(py|js|ts|cpp)$/, '')
+        if (fileName.includes('entry') || fileName.includes('starter')) {
+          key = 'entry'
+        } else if (fileName.includes('test')) {
           key = 'tests'
-        } else if (code.includes('solution') || code.includes('answer')) {
+        } else if (fileName.includes('solution')) {
           key = 'solution'
-        } else if (code.includes('entry') || code.includes('starter')) {
+        } else if (fileName.includes('hidden')) {
+          key = 'hidden_tests'
+        } else {
+          key = fileName.replace(/\s+/g, '_')
+        }
+      } else if (language) {
+        // Try to infer purpose from content and context
+        const codeContent = code.toLowerCase()
+        if (codeContent.includes('test') || codeContent.includes('assert') || codeContent.includes('expect')) {
+          key = 'tests'
+        } else if (codeContent.includes('solution') || (codeContent.includes('def ') && !codeContent.includes('todo') && !codeContent.includes('pass'))) {
+          key = 'solution'
+        } else if (codeContent.includes('todo') || codeContent.includes('pass') || codeContent.includes('implement')) {
           key = 'entry'
         } else {
-          key = language
-        }
-      } else {
-        // No language specified, try to infer from content
-        if (code.includes('test') || code.includes('assert') || code.includes('expect')) {
-          key = 'tests'
-        } else if (code.includes('solution') || code.includes('answer')) {
-          key = 'solution'
-        } else if (code.includes('def ') || code.includes('function ') || code.includes('class ')) {
-          key = 'code'
+          // Default based on order - first code block is usually entry
+          const existingKeys = Object.keys(codeBlocks)
+          if (!existingKeys.includes('entry') && language !== 'yaml' && language !== 'markdown') {
+            key = 'entry'
+          } else if (!existingKeys.includes('tests')) {
+            key = 'tests'
+          } else {
+            key = 'solution'
+          }
         }
       }
 
@@ -321,22 +339,40 @@ export class ResponseParserService {
    * Extract statement from response
    */
   private extractStatement(response: string): string {
+    // Look for markdown code block containing statement
+    const markdownBlockMatch = response.match(/```markdown\s*\n([\s\S]*?)```/i)
+    if (markdownBlockMatch) {
+      return markdownBlockMatch[1].trim()
+    }
+
     // Look for statement section
     const statementMatch = response.match(/(?:^|\n)#+\s*(?:statement|problem|description)\s*\n([\s\S]*?)(?=\n#+|\n```|$)/i)
     if (statementMatch) {
       return statementMatch[1].trim()
     }
 
-    // Fallback: take first paragraph or section
+    // Look for content between first heading and first code block
+    const contentMatch = response.match(/(?:^|\n)#[^#].*?\n([\s\S]*?)(?=\n```|$)/i)
+    if (contentMatch) {
+      const content = contentMatch[1].trim()
+      // Filter out placeholder comments
+      if (!content.includes('<!-- Write your') && !content.includes('[Replace this with')) {
+        return content
+      }
+    }
+
+    // Fallback: take first meaningful paragraph
     const lines = response.split('\n')
     const contentLines = lines.filter(line => 
       line.trim() && 
       !line.startsWith('```') && 
-      !line.startsWith('#')
+      !line.startsWith('#') &&
+      !line.includes('<!-- Write your') &&
+      !line.includes('[Replace this with')
     )
     
     if (contentLines.length > 0) {
-      return contentLines.slice(0, 5).join('\n').trim()
+      return contentLines.slice(0, 10).join('\n').trim()
     }
 
     return response.substring(0, 500).trim()
