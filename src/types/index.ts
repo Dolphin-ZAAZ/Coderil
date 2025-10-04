@@ -228,6 +228,10 @@ export interface GeneratedKataContent {
   solutionCode: string
   rubric?: Rubric
   solutionFiles?: Record<string, string> // For template katas
+  multiQuestionConfig?: MultiQuestionConfig // For multi-question katas
+  shortformConfig?: ShortformConfig // For legacy shortform katas
+  oneLinerConfig?: OneLinerConfig // For one-liner katas
+  multipleChoiceConfig?: MultipleChoiceConfig // For multiple choice katas
 }
 
 export interface GenerationMetadata {
@@ -237,6 +241,14 @@ export interface GenerationMetadata {
   originalRequest: KataGenerationRequest
   tokensUsed: number
   generationTime: number
+}
+
+export interface GenerationProgress {
+  stage: 'initializing' | 'generating' | 'parsing' | 'validating' | 'complete' | 'error'
+  message: string
+  progress: number // 0-100
+  tokensUsed?: number
+  estimatedCost?: number
 }
 
 export interface GeneratedKata {
@@ -272,6 +284,27 @@ export interface ValidationResult {
   isValid: boolean
   errors: string[]
   warnings: string[]
+}
+
+export interface ValidationError {
+  type: 'syntax' | 'logic' | 'structure' | 'metadata'
+  message: string
+  file?: string
+  line?: number
+}
+
+export interface ValidationWarning {
+  type: 'style' | 'performance' | 'clarity'
+  message: string
+  file?: string
+  suggestion?: string
+}
+
+export interface ContentValidationResult {
+  isValid: boolean
+  errors: ValidationError[]
+  warnings: ValidationWarning[]
+  suggestions: string[]
 }
 
 export interface FileSystemError extends Error {

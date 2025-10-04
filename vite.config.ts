@@ -60,7 +60,8 @@ export default defineConfig({
           }
         }
       }
-    ])
+    ]),
+    renderer()
   ],
   resolve: {
     alias: {
@@ -69,7 +70,19 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      external: [
+        'fs',
+        'path', 
+        'child_process',
+        'os',
+        'crypto',
+        'electron',
+        'sqlite3',
+        'sql.js'
+      ]
+    }
   },
   server: {
     port: 5173

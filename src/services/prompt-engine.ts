@@ -209,7 +209,8 @@ Please provide only the code solution without additional explanation.
       'py': 'Python',
       'js': 'JavaScript', 
       'ts': 'TypeScript',
-      'cpp': 'C++'
+      'cpp': 'C++',
+      'none': 'No Language'
     }
     return languageMap[language] || language
   }
@@ -219,7 +220,8 @@ Please provide only the code solution without additional explanation.
       'py': 'py',
       'js': 'js',
       'ts': 'ts',
-      'cpp': 'cpp'
+      'cpp': 'cpp',
+      'none': 'txt'
     }
     return extensionMap[language] || language
   }
