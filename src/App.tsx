@@ -407,6 +407,18 @@ function App() {
       if (kataDetails.type === 'explain') {
         // AI judging for explanation katas
         if (kataDetails.rubric) {
+          console.log('DEBUG: About to judge explanation with content:', {
+            contentLength: currentCode.length,
+            contentPreview: currentCode.substring(0, 200) + (currentCode.length > 200 ? '...' : ''),
+            kataTitle: kataDetails.title,
+            isPlaceholderContent: currentCode.includes('<!-- Write your explanation here -->') || currentCode.includes('[Replace this with')
+          })
+          
+          // Verify we're not accidentally passing solution content
+          if (currentCode.includes('<!-- Write your explanation here -->') || currentCode.includes('[Replace this with')) {
+            console.warn('WARNING: Submitting placeholder content to AI judge!')
+          }
+          
           const aiJudgment = await window.electronAPI.judgeExplanation(
             currentCode,
             kataDetails.rubric,

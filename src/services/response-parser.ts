@@ -187,6 +187,13 @@ export class ResponseParserService {
           metadata.tags = match[1].split(',').map(tag => tag.trim())
         } else if (key === 'timeout') {
           metadata.timeout_ms = parseInt(match[1], 10)
+        } else if (key === 'title') {
+          // Remove quotation marks from title
+          let title = match[1].trim()
+          if ((title.startsWith('"') && title.endsWith('"')) || (title.startsWith("'") && title.endsWith("'"))) {
+            title = title.slice(1, -1)
+          }
+          metadata.title = title
         } else {
           // Type assertion for other metadata fields
           (metadata as any)[key] = match[1].trim()
@@ -342,21 +349,27 @@ export class ResponseParserService {
     // Look for markdown code block containing statement
     const markdownBlockMatch = response.match(/```markdown\s*\n([\s\S]*?)```/i)
     if (markdownBlockMatch) {
-      return markdownBlockMatch[1].trim()
+      let content = markdownBlockMatch[1].trim()
+      // Remove unwanted file name headings
+      content = this.cleanStatementContent(content)
+      return content
     }
 
     // Look for statement section
     const statementMatch = response.match(/(?:^|\n)#+\s*(?:statement|problem|description)\s*\n([\s\S]*?)(?=\n#+|\n```|$)/i)
     if (statementMatch) {
-      return statementMatch[1].trim()
+      let content = statementMatch[1].trim()
+      content = this.cleanStatementContent(content)
+      return content
     }
 
     // Look for content between first heading and first code block
     const contentMatch = response.match(/(?:^|\n)#[^#].*?\n([\s\S]*?)(?=\n```|$)/i)
     if (contentMatch) {
-      const content = contentMatch[1].trim()
+      let content = contentMatch[1].trim()
       // Filter out placeholder comments
       if (!content.includes('<!-- Write your') && !content.includes('[Replace this with')) {
+        content = this.cleanStatementContent(content)
         return content
       }
     }
@@ -372,19 +385,46 @@ export class ResponseParserService {
     )
     
     if (contentLines.length > 0) {
-      return contentLines.slice(0, 10).join('\n').trim()
+      let content = contentLines.slice(0, 10).join('\n').trim()
+      content = this.cleanStatementContent(content)
+      return content
     }
 
     return response.substring(0, 500).trim()
   }
 
   /**
+   * Clean statement content by removing unwanted headings and formatting
+   */
+  private cleanStatementContent(content: string): string {
+    // Remove file name headings like "# statement.md", "# meta.yaml", etc.
+    content = content.replace(/^#+\s*(?:statement|meta|entry|tests?|solution)\.(?:md|yaml|yml|py|js|ts|cpp)\s*\n?/gim, '')
+    
+    // Remove comment-style file names like "# statement.md"
+    content = content.replace(/^#+\s*(?:statement|meta|entry|tests?|solution)\.(?:md|yaml|yml|py|js|ts|cpp)\s*$/gim, '')
+    
+    // Remove standalone file extension comments
+    content = content.replace(/^#+\s*\.(?:md|yaml|yml|py|js|ts|cpp)\s*\n?/gim, '')
+    
+    // Clean up multiple consecutive newlines
+    content = content.replace(/\n{3,}/g, '\n\n')
+    
+    return content.trim()
+  }
+
+  /**
    * Build metadata with defaults
    */
   private buildMetadata(partial: Partial<KataMetadata>, type: KataType): KataMetadata {
+    // Clean up title by removing quotation marks
+    let title = partial.title || 'Generated Kata'
+    if ((title.startsWith('"') && title.endsWith('"')) || (title.startsWith("'") && title.endsWith("'"))) {
+      title = title.slice(1, -1)
+    }
+
     return {
       slug: partial.slug || 'generated-kata',
-      title: partial.title || 'Generated Kata',
+      title,
       language: partial.language || 'none',
       type,
       difficulty: partial.difficulty || 'medium',

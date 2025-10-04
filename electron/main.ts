@@ -276,7 +276,8 @@ ipcMain.handle('judge-explanation', async (_event, explanation: string, rubric: 
       explanationLength: explanation.length, 
       rubric: rubric.keys,
       topic,
-      hasContext: !!context
+      hasContext: !!context,
+      explanationPreview: explanation.substring(0, 200) + (explanation.length > 200 ? '...' : '')
     })
     
     // Get AI API key from user settings or environment variable

@@ -328,6 +328,8 @@ Any additional constraints, edge cases, or clarifications...
 9. DO NOT generate template files - generate actual working content
 10. The starter code should be INCOMPLETE - students need to implement the logic
 11. The statement should be a REAL problem description, not placeholder text
+12. DO NOT include file name headings like "# statement.md" or "# entry.py" in the content
+13. The title should NOT have quotation marks around it
 
 **Language-Specific Requirements:**
 - Python: Use proper indentation, valid syntax, include imports if needed
@@ -372,6 +374,8 @@ IMPORTANT:
 - The statement should describe a SPECIFIC programming problem
 - All code blocks must be syntactically valid
 - Follow the EXACT format shown in the examples
+- DO NOT include file name headings like "# statement.md" in the content
+- DO NOT put quotation marks around the title
 
 Please generate all required files following the exact format specified above.`,
       
