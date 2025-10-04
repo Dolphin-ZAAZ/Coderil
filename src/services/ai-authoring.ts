@@ -11,6 +11,7 @@ import { PromptEngineService } from './prompt-engine'
 import { ResponseParserService } from './response-parser'
 import { ContentValidatorService } from './content-validator'
 import { FileGeneratorService, FileGenerationResult, SlugConflictResolution } from './file-generator'
+import { GenerationHistoryService } from './generation-history'
 import { aiAuthoringErrorHandler } from './ai-authoring-error-handler'
 
 export interface VariationOptions {
@@ -52,6 +53,7 @@ export class AIAuthoringService {
   private responseParserService: ResponseParserService
   private contentValidatorService: ContentValidatorService
   private fileGeneratorService: FileGeneratorService
+  private generationHistoryService: GenerationHistoryService
   
   // Progress tracking
   private currentProgress: GenerationProgress | null = null
@@ -71,6 +73,7 @@ export class AIAuthoringService {
     this.responseParserService = ResponseParserService.getInstance()
     this.contentValidatorService = ContentValidatorService.getInstance()
     this.fileGeneratorService = FileGeneratorService.getInstance()
+    this.generationHistoryService = GenerationHistoryService.getInstance()
   }
 
   static getInstance(): AIAuthoringService {
@@ -181,6 +184,16 @@ export class AIAuthoringService {
         estimatedCost: response.usage.estimatedCost
       })
 
+      // Record successful generation in history
+      this.generationHistoryService.recordSuccessfulGeneration(
+        request,
+        generatedKata,
+        response.usage.totalTokens,
+        response.usage.estimatedCost,
+        Date.now() - startTime,
+        config.model
+      )
+
       return generatedKata
 
     } catch (error) {
@@ -193,6 +206,17 @@ export class AIAuthoringService {
         message: errorMessage,
         progress: 0
       })
+      
+      // Record failed generation in history
+      const config = await this.aiConfigService.getConfig().catch(() => ({ model: 'unknown' }))
+      this.generationHistoryService.recordFailedGeneration(
+        request,
+        errorMessage,
+        0, // No tokens used on failure
+        0, // No cost on failure
+        Date.now() - startTime,
+        config.model || 'unknown'
+      )
       
       // Handle and log the error through the specialized error handler
       if (error instanceof AIServiceError) {
@@ -321,6 +345,24 @@ export class AIAuthoringService {
         tokensUsed: response.usage.totalTokens,
         estimatedCost: response.usage.estimatedCost
       })
+
+      // Record successful variation generation in history
+      const variationRequest: KataGenerationRequest = {
+        description: `Variation of ${sourceKata.title}`,
+        language: sourceKata.language,
+        difficulty: sourceKata.difficulty,
+        type: sourceKata.type,
+        generateHiddenTests: true
+      }
+
+      this.generationHistoryService.recordSuccessfulGeneration(
+        variationRequest,
+        generatedKata,
+        response.usage.totalTokens,
+        response.usage.estimatedCost,
+        Date.now() - startTime,
+        config.model
+      )
 
       return generatedKata
 
@@ -499,6 +541,62 @@ export class AIAuthoringService {
       totalTokens: 0,
       estimatedCost: 0
     }
+  }
+
+  /**
+   * Get generation history
+   */
+  getGenerationHistory(limit?: number) {
+    return this.generationHistoryService.getHistory(limit)
+  }
+
+  /**
+   * Get generation statistics
+   */
+  getGenerationStats() {
+    return this.generationHistoryService.getGenerationStats()
+  }
+
+  /**
+   * Get current generation session
+   */
+  getCurrentGenerationSession() {
+    return this.generationHistoryService.getCurrentSession()
+  }
+
+  /**
+   * Get cost breakdown for a time period
+   */
+  getCostBreakdown(days: number = 30) {
+    return this.generationHistoryService.getCostBreakdown(days)
+  }
+
+  /**
+   * Clear generation history
+   */
+  clearGenerationHistory(): void {
+    this.generationHistoryService.clearHistory()
+  }
+
+  /**
+   * Export generation history
+   */
+  exportGenerationHistory(): string {
+    return this.generationHistoryService.exportHistory()
+  }
+
+  /**
+   * Import generation history
+   */
+  importGenerationHistory(jsonData: string) {
+    return this.generationHistoryService.importHistory(jsonData)
+  }
+
+  /**
+   * Start a new generation session
+   */
+  startNewGenerationSession(): void {
+    this.generationHistoryService.startNewSession()
   }
 
   /**

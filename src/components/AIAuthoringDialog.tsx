@@ -9,6 +9,8 @@ import {
   GenerationProgress,
   Kata
 } from '@/types'
+import { GenerationProgressIndicator } from './GenerationProgressIndicator'
+import { GenerationSuccessNotification, GenerationSummary } from './GenerationSuccessNotification'
 // AI services are accessed via IPC in Electron renderer process
 import './AIAuthoringDialog.css'
 
@@ -118,6 +120,7 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
   } | null>(null)
   const [aiConfig, setAiConfig] = useState<AIGenerationConfig | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [successSummary, setSuccessSummary] = useState<GenerationSummary | null>(null)
 
   // AI services are accessed via IPC calls
 
@@ -369,6 +372,43 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
   const clearError = () => {
     setError(null)
     setErrorDetails(null)
+  }
+
+  const handleSuccessDismiss = () => {
+    setSuccessSummary(null)
+  }
+
+  const handleViewKata = (slug: string) => {
+    // In a real implementation, this would navigate to the kata
+    console.log('Navigate to kata:', slug)
+    onClose()
+  }
+
+  const handleGenerateAnother = () => {
+    setSuccessSummary(null)
+    // Reset form for another generation
+    setFormData({
+      description: '',
+      language: 'py',
+      difficulty: 'medium',
+      type: 'code',
+      topics: '',
+      constraints: '',
+      tags: '',
+      additionalRequirements: '',
+      generateHiddenTests: true,
+      questionCount: 5,
+      questionTypes: ['multiple-choice', 'shortform'],
+      passingScore: 70,
+      allowReview: true,
+      showProgressBar: true,
+      questionType: 'shortform',
+      optionCount: 4,
+      caseSensitive: false,
+      maxLength: 100,
+      contextFiles: [],
+      contextText: ''
+    })
   }
 
   if (!isOpen) return null
@@ -734,32 +774,13 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
           {/* Progress Display */}
           {(isGenerating || progress) && (
             <div className="progress-section">
-              {progress && (
-                <>
-                  <div className="progress-header">
-                    <span className="progress-stage">{progress.stage}</span>
-                    <span className="progress-percentage">{progress.progress}%</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
-                      style={{ width: `${progress.progress}%` }}
-                    />
-                  </div>
-                  <div className="progress-message">{progress.message}</div>
-                  {progress.tokensUsed && (
-                    <div className="progress-stats">
-                      Tokens used: {progress.tokensUsed}
-                      {progress.estimatedCost && (
-                        <span> • Estimated cost: ${progress.estimatedCost.toFixed(4)}</span>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-              {isGenerating && !progress && (
-                <div className="progress-message">Initializing generation...</div>
-              )}
+              <GenerationProgressIndicator
+                progress={progress}
+                onCancel={isGenerating ? handleCancel : undefined}
+                showEstimatedTime={true}
+                showTokenUsage={true}
+                showCostEstimate={true}
+              />
             </div>
           )}
 
@@ -833,6 +854,15 @@ export function AIAuthoringDialog({ isOpen, onClose, onKataGenerated: _onKataGen
           </div>
         </form>
       </div>
+
+      {/* Success Notification */}
+      <GenerationSuccessNotification
+        summary={successSummary}
+        onDismiss={handleSuccessDismiss}
+        onViewKata={handleViewKata}
+        onGenerateAnother={handleGenerateAnother}
+        duration={10000} // 10 seconds
+      />
     </div>
   )
 }

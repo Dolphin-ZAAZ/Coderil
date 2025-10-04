@@ -251,6 +251,13 @@ export interface GenerationProgress {
   estimatedCost?: number
 }
 
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  estimatedCost: number
+}
+
 export interface GeneratedKata {
   slug: string
   content: GeneratedKataContent
